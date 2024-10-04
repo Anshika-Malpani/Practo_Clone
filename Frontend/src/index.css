@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.pulse {
+    box-shadow: 0 0 0 0 rgba(170, 224, 0, .6);
+    animation: pulse 1.2s infinite;
+}
+
+@keyframes pulse {
+    70% {
+        box-shadow: 0 0 0 10px rgba(170, 224, 0, 0)
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(170, 224, 0, 0)
+    }
+}
+
+.specialitiesCard {
+    box-shadow: 0 3px 6px 0 rgba(45, 45, 51, .08);
+}
+
+.how-it-works-section::before {
+    content: "";
+    width: 59%;
+    background: #eaeaea;
+    height: 2px;
+    display: block;
+    position: absolute;
+    top: 55px;
+    left: 20.9%;
+}
