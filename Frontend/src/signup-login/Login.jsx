@@ -24,7 +24,6 @@ const Login = () => {
       const response = await axios.post('http://localhost:3000/users/login', formData, { withCredentials: true });
       if (response.data.message === "Login successfully") {
         console.log(response.data);
-        console.log(userName);
         setUserName(response.data.user.fullname);
         navigate('/'); 
     }

@@ -10,13 +10,21 @@ const RoomPage = () => {
   const [isStreamSent, setIsStreamSent] = useState(false);
   const [isCallInitiated, setIsCallInitiated] = useState(false);
   const [isCallReceived, setIsCallReceived] = useState(false); 
-
-  const isConnected = myStream && remoteStream;
+  const [joinMessage, setJoinMessage] = useState(""); // New state for join message
+  const [userCount, setUserCount] = useState(0); // Track number of users in the room
 
   const handleUserJoined = useCallback(({ email, id }) => {
-    console.log(`Email ${email} joined room`);
     setRemoteSocketId(id);
-  }, []);
+    const newUserCount = userCount + 1; // Increment user count
+
+    if (newUserCount === 1) {
+      setJoinMessage(` ${email} has joined the room.`); // First user sees this
+    } else {
+      setJoinMessage(` ${email} is in the room.`); // Second user sees this
+    }
+    setUserCount(newUserCount);
+    console.log(userCount); // Update user count
+  }, [userCount]);
 
   const handleCallUser = useCallback(async () => {
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -90,8 +98,11 @@ const RoomPage = () => {
       const remoteStream = ev.streams;
       console.log("GOT TRACKS!!");
       setRemoteStream(remoteStream[0]);
+      if (myStream && remoteStream) {
+        setJoinMessage(""); // Clear join message when both users have tracks
+      }
     });
-  }, []);
+  }, [myStream]);
 
   useEffect(() => {
     socket.on("user:joined", handleUserJoined);
@@ -118,11 +129,13 @@ const RoomPage = () => {
 
   return (
     <div className="flex flex-col items-center p-6 bg-gray-100 h-[89vh]">
+      <div className="flex flex-col items-center justify-center w-full h-full">
       <h1 className="text-3xl font-bold text-blue-600 mb-6">Room Page</h1>
       <h4 className={`text-lg mb-6 ${remoteSocketId ? "text-green-600" : "text-red-600"}`}>
-        {remoteSocketId ? "Connected" : "No one in room"}
+        {remoteSocketId ? "Connected" : "Waiting for connection..."}
       </h4>
-
+    
+      {joinMessage && <p className="text-lg text-gray-700 mb-4">{joinMessage}</p>} 
       {myStream && !isStreamSent && !isCallReceived && (
         <button
           onClick={() => {
@@ -185,6 +198,7 @@ const RoomPage = () => {
             />
           </div>
         )}
+      </div>
       </div>
     </div>
   );

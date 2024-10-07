@@ -26,10 +26,12 @@ const Signup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setUserName(''); 
     try {
       const response = await axios.post('http://localhost:3000/users/register', formData);
       
       if (response.data.message === "Account created successfully.") {
+        console.log(formData.fullname);
         setUserName(formData.fullname);
         navigate('/');
       }
