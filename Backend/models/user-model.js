@@ -8,6 +8,7 @@ const userSchema = mongoose.Schema({
     },
     mobileNumber:Number,
     password: String,
+    privateMode:Boolean
     
 })
 

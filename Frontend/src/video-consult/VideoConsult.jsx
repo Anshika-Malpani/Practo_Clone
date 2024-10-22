@@ -7,6 +7,7 @@ import OurDoctors from '../components/OurDoctors'
 import HowItWorks from '../components/HowItWorks'
 import TrustMetrics from '../components/TrustMetrics'
 import Benefits from '../components/Benefits'
+import Chat from '../components/Chat'
 
 const VideoConsult = () => {
   return (
@@ -19,6 +20,7 @@ const VideoConsult = () => {
     <HowItWorks/>
     <TrustMetrics/>
     <Benefits/>
+    <Chat/>
     </>
   )
 }

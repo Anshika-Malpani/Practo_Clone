@@ -2,15 +2,21 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
-import { UserProvider } from './context/UserContext';  // Import UserProvider
+import { UserProvider } from './context/UserContext';
+import { DoctorProvider } from './context/DoctorContext.jsx';
 import { SocketProvider } from './context/SocketProvider.jsx';
+import { ChatContextProvider } from './context/ChatContext.jsx';
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
+ 
     <UserProvider>
-      <SocketProvider>
-      <App />
-      </SocketProvider>
+
+      <DoctorProvider>
+        <SocketProvider>
+          <App />
+        </SocketProvider>
+      </DoctorProvider>
+
     </UserProvider>
-  </StrictMode>
+ 
 )

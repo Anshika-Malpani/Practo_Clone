@@ -4,8 +4,12 @@ import { LiaAwardSolid,LiaDigitalTachographSolid } from "react-icons/lia";
 
 import { MdOutlineMessage } from "react-icons/md";
 import { NavLink } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
+import { useDoctor } from '../context/DoctorContext';
 
 const FirstFold = () => {
+    const {isLoggedIn,setisLoggedIn} = useUser() || {};
+    const { isDoctorLoggedIn, setisDoctorLoggedIn } = useDoctor() || {};
     return (
         <>
             <div className='w-full h-[58vh] bg-[#F8E9E6] flex items-center px-24 pt-12'>
@@ -34,7 +38,28 @@ const FirstFold = () => {
                         <div><span className='inline-block w-[8px] h-[8px] rounded-full bg-[#aae000] pulse'></span></div>
                     </div>
 
-                    <NavLink to="/lobby"><button className='bg-[#199FD9] px-5 py-2 text-white rounded-md text-lg font-semibold'>Consult Now</button></NavLink>
+                    <div className='flex gap-5'>
+    {
+        isLoggedIn && !isDoctorLoggedIn ? ( 
+            <NavLink to="/lobby">
+                <button className='bg-[#199FD9] px-5 py-2 text-white rounded-md text-lg font-semibold'>Consult Now</button>
+            </NavLink>
+        ) : null 
+    }
+    {
+        isDoctorLoggedIn ? ( 
+            <NavLink to="/schedulemeet">
+                <button className='bg-[#199FD9] px-5 py-2 text-white rounded-md text-lg font-semibold'>Schedule Meeting</button>
+            </NavLink>
+        ) : (
+            !isLoggedIn && ( 
+                <NavLink to="/signup">
+                    <button className='bg-[#199FD9] px-5 py-2 text-white rounded-md text-lg font-semibold'>Consult Now</button>
+                </NavLink>
+            )
+        )
+    }
+</div>
 
                     <div className='flex items-center gap-3 mt-6'>
                         <Features icon={<LiaAwardSolid className='text-[1.2rem] mt-[0.2rem]'/>} feature="Verified Doctors" />

@@ -2,9 +2,9 @@ import React, { useState } from 'react'
 import axios from 'axios'
 
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useUser } from '../context/UserContext';
+import { useDoctor } from '../context/DoctorContext';
 
-const Login = () => {
+const DoctorLogin = () => {
   const [formData, setFormData] = useState({ mobileNumber: '', password: '' });
 
   const handleChange = (e) => {
@@ -13,21 +13,17 @@ const Login = () => {
   };
 
   const [flashMessage, setFlashMessage] = useState('');
-  const userContext = useUser();
-  const {setUserName,setUserId ,setIsPrivateMode} = userContext || {};
+  const doctorContext = useDoctor();
+  const { setDoctor } = doctorContext || {}; 
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setUserName(''); 
-    setUserId('')
+    setDoctor(''); 
     try {
-      const response = await axios.post('http://localhost:3000/users/login', formData, { withCredentials: true });
+      const response = await axios.post('http://localhost:3000/doctor/loginDoctor', formData, { withCredentials: true });
       if (response.data.message === "Login successfully") {
-        console.log(response.data);
-        setUserName(response.data.user.fullname);
-        setUserId(response.data.user.id)
-        setIsPrivateMode(response.data.user.privateMode)
+        setDoctor(response.data.doctor.fullname);
         navigate('/'); 
     }
     } catch (error) {
@@ -48,8 +44,8 @@ const Login = () => {
         </div>
       )}
       <div className='w-full flex justify-center gap-10 border-[1px] border-[#f0f0f5] h-[8vh]'>
-        <NavLink to="/login" className={({ isActive }) => isActive ? 'border-b-[4px] border-[#199FD9] text-[#199FD9] py-[0.9rem]' : 'py-[0.9rem]'}><h1 className='text-sm'>Login</h1></NavLink>
-        <NavLink to="/signup" className={({ isActive }) => isActive ? 'border-b-[4px] border-[#199FD9] text-[#199FD9] py-[0.9rem]' : 'py-[0.9rem]'}><h1 className='text-sm'>Register</h1></NavLink>
+        <NavLink to="/doctor_login" className={({ isActive }) => isActive ? 'border-b-[4px] border-[#199FD9] text-[#199FD9] py-[0.9rem]' : 'py-[0.9rem]'}><h1 className='text-sm'>Login</h1></NavLink>
+        <NavLink to="/doctor_signup" className={({ isActive }) => isActive ? 'border-b-[4px] border-[#199FD9] text-[#199FD9] py-[0.9rem]' : 'py-[0.9rem]'}><h1 className='text-sm'>Register</h1></NavLink>
       </div>
       <div className='flex gap-5'>
         <div className='w-[50%] h-[81vh] flex justify-end items-center'><img className='w-[55%]' src="/images/illustration.webp" alt="" /></div>
@@ -89,4 +85,4 @@ const Login = () => {
   )
 }
 
-export default Login
+export default DoctorLogin

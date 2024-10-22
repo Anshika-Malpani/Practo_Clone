@@ -31,3 +31,69 @@
     top: 55px;
     left: 20.9%;
 }
+
+.bg-primary {
+  background-color: #199FD9; /* Change this to your desired color */
+}
+
+.dot {
+  transition: transform 0.3s ease; /* Smooth transition for the dot */
+}
+
+input[type="checkbox"]:checked + div .dot {
+  transform: translateX(70%); /* Move the dot to the right when checked */
+}
+  
+.react-emoji-picker {
+   /* Set desired width */
+  height: 350px !important;  /* Set desired height */
+  overflow-y: auto;
+  position: absolute;   
+  margin-top: 84px;      /* Add scroll if needed */
+}
+
+.potentialChats::-webkit-scrollbar {
+  width: 5px;
+}
+
+.potentialChats::-webkit-scrollbar-track {
+  background: #199FD9;
+}
+
+.potentialChats::-webkit-scrollbar-thumb {
+  background-color: #dadada;
+  border-radius: 20px;
+}
+
+.userChats::-webkit-scrollbar {
+  width: 5px;
+}
+
+.userChats::-webkit-scrollbar-track {
+  background: #199FD9;
+}
+
+.userChats::-webkit-scrollbar-thumb {
+  background-color: #dadada;
+  border-radius: 20px;
+}
+
+.chatBox::-webkit-scrollbar {
+  width: 4px;
+  height: 10px;
+  
+}
+
+.chatBox::-webkit-scrollbar-track {
+  background: #F3F4F6;
+}
+
+.chatBox::-webkit-scrollbar-thumb {
+  background-color: #949697;
+  border-radius: 20px;
+}
+
+.chat{
+  box-shadow: 20px 20px 60px #bebebe,
+  -20px -20px 60px #ffffff;
+}

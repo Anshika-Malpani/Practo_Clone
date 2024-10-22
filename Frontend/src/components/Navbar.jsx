@@ -1,31 +1,80 @@
 import React, { useEffect, useState } from 'react'
 import { SlArrowDown } from "react-icons/sl";
-import { NavLink, useNavigate  } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { useDoctor } from '../context/DoctorContext';
 import axios from 'axios';
+import { RiMessage2Fill } from "react-icons/ri";
 
 const Navbar = () => {
-    const { userName } = useUser() || {};
-    const [isLoggedIn, setIsLoggedIn] = useState(!!userName);
-
-    console.log(userName);
+    const { doctor, isDoctorLoggedIn, setisDoctorLoggedIn } = useDoctor() || {};
+    const [userInfo, setUserInfo] = useState(false);
+    const [isChecked, setIsChecked] = useState(false);
+    const { 
+        userId, 
+        userName, 
+        isPrivateMode, 
+        setIsPrivateMode, 
+        isLoggedIn, 
+        setisLoggedIn 
+    } = useUser() || {};
+    const navigate = useNavigate();
     
+    // console.log(isPrivateMode);
+
+    useEffect(() => {
+        const storedPrivateMode = JSON.parse(localStorage.getItem('privateMode'));
+        if (storedPrivateMode !== null) {
+            setIsChecked(storedPrivateMode);
+            setIsPrivateMode(storedPrivateMode);
+        }
+    }, [setIsPrivateMode]);
+
+    const handleCheckboxChange = async () => {
+        try {
+            const newCheckedState = !isChecked;
+
+            // Update state and local storage
+            setIsChecked(newCheckedState);
+            setIsPrivateMode(newCheckedState);
+            localStorage.setItem('privateMode', JSON.stringify(newCheckedState));
+
+            // Make API call to update private mode on backend
+            await axios.put(`http://localhost:3000/users/${userId}/privateMode`, {
+                privateMode: newCheckedState,
+            });
+        } catch (error) {
+            console.error('Error updating private mode:', error);
+        }
+    };
+
     const handleLogout = async () => {
         try {
-            
+
             const response = await axios.post('http://localhost:3000/users/logout');
             localStorage.clear();
-            setIsLoggedIn(false);
-          
+            setisLoggedIn(false);
+            setUserInfo(false);
+            navigate('/');
+
+        } catch (error) {
+            console.error('Logout failed:', error);
+        }
+    };
+    const handleDoctorLogout = async () => {
+        try {
+
+            const response = await axios.post('http://localhost:3000/doctor/logoutDoctor');
+            localStorage.clear();
+            setisDoctorLoggedIn(false);
+            setUserInfo(false); 
+
         } catch (error) {
             console.error('Logout failed:', error);
         }
     };
 
-    useEffect(() => {
-        setIsLoggedIn(!!userName); 
-    }, [userName]);
-
+    
     return (
         <>
             <div className='w-full h-[11vh]  flex items-center '>
@@ -59,15 +108,57 @@ const Navbar = () => {
                         <span className='text-[0.8rem]'>Security&help</span>
                         <span><SlArrowDown className='text-[0.6rem] font-bold mt-[0.2rem]' /></span>
                     </div>
-                    {isLoggedIn ? (<div className='flex gap-2 items-center'>
-                        <p className='text-[0.8rem] font-semibold'>
-                            {userName.length > 8 ? `${userName.substring(0, 8)}...` : userName}
-                        </p>
-                        <button onClick={handleLogout} className='py-1 px-2 border-[1px] text-[0.7rem] rounded-md border-[#dadada] text-gray-800 transition-all ease-in-out duration-100 hover:text-[#199FD9] hover:border-[#88c1da]'>Logout</button></div>
+
+                    {
+                        isLoggedIn && <NavLink to="/chat"><RiMessage2Fill className='text-lg' /></NavLink>
+                    }
+                    {isLoggedIn ? (
+                        <div className='flex gap-2 items-center relative cursor-pointer select-none'>
+
+                            <div onClick={() => setUserInfo(!userInfo)} className='flex items-center justify-center gap-2'>
+                                <p className='text-[0.8rem] font-semibold'>
+                                    {isPrivateMode === true ?"Anonym...":userName}
+                                </p>
+                                <span><SlArrowDown className='text-[0.6rem] font-bold mt-[0.2rem]' /></span>
+                            </div>
+
+                            {userInfo && <div style={{ boxShadow: '0 4px 8px 0 rgba(0, 0, 0, 0.11)' }} className='absolute w-[15vw]   top-7 right-0 bg-white shadow-xl  rounded-md p-4 flex flex-col gap-3'>
+                                <div className='flex gap-3 px-2'><img className='w-[3vw] ' src="/images/thumbnail.png" alt="" /><h1 className='text-[0.8rem] font-semibold'>{isPrivateMode === true ?"Anonym...":userName}</h1></div>
+                                <div className='flex gap-2'>
+                                    <div className="flex items-center">
+                                        <label className="flex cursor-pointer select-none items-center">
+                                            <div className="relative">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={handleCheckboxChange}
+                                                    className="sr-only" 
+                                                />
+                                                <div className="block h-[1.3rem] w-9 rounded-full border border-[#BFCEFF] bg-[#EAEEFB]"></div>
+                                                <div
+                                                    className={`dot bg-primary absolute top-[2px] left-0 h-4 w-4 rounded-full transition-transform duration-300 ${isPrivateMode === true ? 'translate-x-4' : 'translate-x-1'}`}
+
+                                                ></div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <h1 className='text-sm '>Private Mode</h1></div>
+                                <div onClick={handleLogout} ><h1 className='text-sm'>Logout</h1></div>
+                            </div>}
+                        </div>
+
+                    ) : isDoctorLoggedIn ? (
+                        <div className='flex gap-2 items-center'>
+                            <p className='text-[0.8rem] font-semibold'>
+                                {doctor.length > 8 ? `Dr. ${doctor.substring(0, 5)}...` : doctor}
+                            </p>
+                            <button onClick={handleDoctorLogout} className='py-1 px-2 border-[1px] text-[0.7rem] rounded-md border-[#dadada] text-gray-800 transition-all ease-in-out duration-100 hover:text-[#199FD9] hover:border-[#88c1da]'>Logout</button>
+                        </div>
                     ) : (
-                        <NavLink to="/signup" className='flex items-center justify-center gap-1' >
-                            <button  className='py-1 px-2 border-[1px] text-[0.7rem] rounded-md border-[#dadada] text-gray-800 transition-all ease-in-out duration-100 hover:text-[#199FD9] hover:border-[#88c1da]'>Login / Signup</button>
-                        </NavLink>)}
+                        <NavLink to="/signup" className='flex items-center justify-center gap-1'>
+                            <button className='py-1 px-2 border-[1px] text-[0.7rem] rounded-md border-[#dadada] text-gray-800 transition-all ease-in-out duration-100 hover:text-[#199FD9] hover:border-[#88c1da]'>Login / Signup</button>
+                        </NavLink>
+                    )}
 
                 </div>
             </div>

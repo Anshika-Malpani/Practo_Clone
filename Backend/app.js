@@ -6,6 +6,9 @@ const path=require("path")
 const mongooseConnection=require('./config/mongoose-connection')
 const cors = require('cors');
 const usersRouter=require("./routes/userRouter")
+const docotrsRouter=require("./routes/doctorRouter")
+const chatRouter=require("./routes/chatRouter")
+const messageRouter=require("./routes/messageRouter")
 const signalingServer = require('./signalingServer');
 
 require("dotenv").config();
@@ -28,6 +31,12 @@ app.use(cookieParser())
 app.use(express.static(path.join(__dirname,"public")));
 
 app.use("/users",usersRouter)
+
+app.use("/doctor",docotrsRouter)
+
+app.use("/chat",chatRouter)
+
+app.use("/messages",messageRouter)
 
 mongooseConnection()
 

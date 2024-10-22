@@ -1,6 +1,13 @@
 import React, { useEffect, useCallback, useState } from "react";
 import peer from "../service/peer";
 import { useSocket } from "../context/SocketProvider";
+import { FaMicrophone } from "react-icons/fa";
+import { BsFillCameraVideoFill } from "react-icons/bs";
+import { NavLink, useNavigate } from 'react-router-dom';
+import { MdCallEnd } from "react-icons/md";
+import { IoChatboxEllipsesSharp, IoCloseSharp } from "react-icons/io5"; // Import chat icons
+import Chat from '../components/Chat'; // Import the Chat component
+import RoomChat from "../components/RoomChat";
 
 const RoomPage = () => {
   const socket = useSocket();
@@ -9,43 +16,52 @@ const RoomPage = () => {
   const [remoteStream, setRemoteStream] = useState();
   const [isStreamSent, setIsStreamSent] = useState(false);
   const [isCallInitiated, setIsCallInitiated] = useState(false);
-  const [isCallReceived, setIsCallReceived] = useState(false); 
-  const [joinMessage, setJoinMessage] = useState(""); // New state for join message
-  const [userCount, setUserCount] = useState(0); // Track number of users in the room
+  const [isCallReceived, setIsCallReceived] = useState(false);
+  const [isAudioOnly, setIsAudioOnly] = useState(false);
+  const [joinMessage, setJoinMessage] = useState("");
+  const [userCount, setUserCount] = useState(0);
+  const [isVideoCallStarted, setIsVideoCallStarted] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false); 
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
 
   const handleUserJoined = useCallback(({ email, id }) => {
     setRemoteSocketId(id);
-    const newUserCount = userCount + 1; // Increment user count
-
+    const newUserCount = userCount + 1;
     if (newUserCount === 1) {
-      setJoinMessage(` ${email} has joined the room.`); // First user sees this
+      setJoinMessage(`${email} has joined the room.`);
     } else {
-      setJoinMessage(` ${email} is in the room.`); // Second user sees this
+      setJoinMessage(`${email} is in the room.`);
     }
     setUserCount(newUserCount);
-    console.log(userCount); // Update user count
   }, [userCount]);
 
-  const handleCallUser = useCallback(async () => {
+  const handleCallUser = useCallback(async (videoCall) => {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: true,
-      video: true,
+      video: videoCall,
     });
     const offer = await peer.getOffer();
-    socket.emit("user:call", { to: remoteSocketId, offer });
+    socket.emit("user:call", { to: remoteSocketId, offer, isAudioOnly: !videoCall });
     setMyStream(stream);
+    setIsAudioOnly(!videoCall);
+    
+    if (videoCall) {
+      socket.emit("video:call:started", { to: remoteSocketId });
+      setIsVideoCallStarted(true);
+    }
   }, [remoteSocketId, socket]);
 
   const handleIncommingCall = useCallback(
-    async ({ from, offer }) => {
+    async ({ from, offer, isAudioOnly }) => {
       setRemoteSocketId(from);
       setIsCallReceived(true);
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
-        video: true,
+        video: !isAudioOnly,
       });
       setMyStream(stream);
-      console.log(`Incoming Call`, from, offer);
+      setIsAudioOnly(isAudioOnly);
       const ans = await peer.getAnswer(offer);
       socket.emit("call:accepted", { to: from, ans });
     },
@@ -61,9 +77,8 @@ const RoomPage = () => {
   const handleCallAccepted = useCallback(
     ({ from, ans }) => {
       peer.setLocalDescription(ans);
-      console.log("Call Accepted!");
       sendStreams();
-      setIsCallReceived(false); 
+      setIsCallReceived(false);
       setIsStreamSent(true);
     },
     [sendStreams]
@@ -96,10 +111,9 @@ const RoomPage = () => {
   useEffect(() => {
     peer.peer.addEventListener("track", async (ev) => {
       const remoteStream = ev.streams;
-      console.log("GOT TRACKS!!");
       setRemoteStream(remoteStream[0]);
       if (myStream && remoteStream) {
-        setJoinMessage(""); // Clear join message when both users have tracks
+        setJoinMessage("");
       }
     });
   }, [myStream]);
@@ -111,12 +125,22 @@ const RoomPage = () => {
     socket.on("peer:nego:needed", handleNegoNeedIncomming);
     socket.on("peer:nego:final", handleNegoNeedFinal);
 
+    socket.on("chat:message", (message) => {
+      setMessages((prevMessages) => [...prevMessages, message]);
+    });
+
+    socket.on("video:call:started", () => {
+      setIsVideoCallStarted(true);
+    });
+
     return () => {
       socket.off("user:joined", handleUserJoined);
       socket.off("incomming:call", handleIncommingCall);
       socket.off("call:accepted", handleCallAccepted);
       socket.off("peer:nego:needed", handleNegoNeedIncomming);
       socket.off("peer:nego:final", handleNegoNeedFinal);
+      socket.off("chat:message");
+      socket.off("video:call:started");
     };
   }, [
     socket,
@@ -127,78 +151,154 @@ const RoomPage = () => {
     handleNegoNeedFinal,
   ]);
 
+  const handleSendMessage = () => {
+    if (newMessage.trim()) {
+      const message = { text: newMessage, from: "me" };
+      setMessages((prevMessages) => [...prevMessages, message]);
+      socket.emit("chat:message", { text: newMessage, to: remoteSocketId });
+      setNewMessage("");
+    }
+  };
+
+  const toggleChat = () => {
+    setIsChatOpen(!isChatOpen); 
+  };
+
   return (
-    <div className="flex flex-col items-center p-6 bg-gray-100 h-[89vh]">
-      <div className="flex flex-col items-center justify-center w-full h-full">
-      <h1 className="text-3xl font-bold text-blue-600 mb-6">Room Page</h1>
-      <h4 className={`text-lg mb-6 ${remoteSocketId ? "text-green-600" : "text-red-600"}`}>
-        {remoteSocketId ? "Connected" : "Waiting for connection..."}
-      </h4>
-    
-      {joinMessage && <p className="text-lg text-gray-700 mb-4">{joinMessage}</p>} 
-      {myStream && !isStreamSent && !isCallReceived && (
-        <button
-          onClick={() => {
-            sendStreams();
-            setIsStreamSent(true);
-          }}
-          className="bg-blue-500 text-white font-bold py-2 px-6 rounded mb-4 hover:bg-blue-600 transition duration-200"
-        >
-          Accept Incoming Call
-        </button>
-      )}
+    <div className="flex flex-col items-center bg-gray-100 h-[89vh]">
+      <div className="w-full h-[88%] flex items-center justify-center ">
+        <div className="flex items-center justify-center flex-col w-full h-full">
+          {!isVideoCallStarted && (
+            <div className="w-[17vw] h-[17vw] rounded-full">
+              <img className="w-full h-full rounded-full object-cover" src="/images/userAvatar.png" alt="" />
+            </div>
+          )}
+          <div className="flex items-center justify-center flex-col">
+            <h4 className={`text-lg mb-6 ${remoteSocketId ? "text-green-600" : "text-red-600"}`}>
+              {remoteSocketId ? "" : "Waiting for connection..."}
+            </h4>
+            {joinMessage && <p className="text-lg text-gray-700 mb-4">{joinMessage}</p>}
 
-      {remoteSocketId && !isCallInitiated && !isCallReceived && ( 
-        <button
-          onClick={() => {
-            handleCallUser();
-            setIsCallInitiated(true);
-          }}
-          className="bg-green-500 text-white font-bold py-2 px-6 rounded mb-6 hover:bg-green-600 transition duration-200"
-        >
-          CALL
-        </button>
-      )}
+            {myStream && !isStreamSent && !isCallReceived && remoteSocketId && !isCallInitiated && (
+              <button
+                onClick={() => {
+                  sendStreams();
+                  setIsStreamSent(true);
+                }}
+                className="bg-blue-500 text-white font-bold py-2 px-6 rounded mb-4 hover:bg-blue-600 transition duration-200"
+              >
+                Accept Incoming Call
+              </button>
+            )}
 
-      {isCallReceived && !isStreamSent && ( 
-        <button
-          onClick={() => {
-            sendStreams();
-            setIsStreamSent(true);
-          }}
-          className="bg-blue-500 text-white font-bold py-2 px-6 rounded mb-4 hover:bg-blue-600 transition duration-200"
-        >
-          Accept Incoming Call
-        </button>
-      )}
+            <div className="flex gap-4">{remoteSocketId && !isCallInitiated && !isCallReceived && (
+              <>
+                <button
+                  onClick={() => {
+                    handleCallUser(true);
+                    setIsCallInitiated(true);
+                  }}
+                  className="bg-green-500 text-white font-bold py-2 px-6 rounded mb-6 hover:bg-green-600 transition duration-200"
+                >
+                  Video Call
+                </button>
+                <button
+                  onClick={() => {
+                    handleCallUser(false);
+                    setIsCallInitiated(true);
+                  }}
+                  className="bg-blue-500 text-white font-bold py-2 px-6 rounded mb-6 hover:bg-blue-600 transition duration-200"
+                >
+                  Audio Call
+                </button>
+              </>
+            )}</div>
 
-      <div className="flex items-center justify-center gap-8">
-        {myStream && (
-          <div className="flex flex-col items-center">
-            <h1 className="text-xl font-semibold mb-2">My Stream</h1>
-            <video
-              autoPlay
-              height="200"
-              width="300"
-              ref={(video) => { if (video) video.srcObject = myStream; }}
-              className="border border-gray-300 rounded-lg shadow-md"
-            />
+            {isCallReceived && !isStreamSent && (
+              <button
+                onClick={() => {
+                  sendStreams();
+                  setIsStreamSent(true);
+                }}
+                className="bg-blue-500 text-white font-bold py-2 px-6 rounded mb-4 hover:bg-blue-600 transition duration-200"
+              >
+                Accept Incoming Call
+              </button>
+            )}
+
+            <div className="flex items-center justify-center gap-8 w-screen">
+              {myStream && !isAudioOnly && (
+                <div className="flex flex-col items-center">
+                  <video
+                    autoPlay
+                    width="500px"
+                    height="400px"
+                    ref={(video) => { if (video) video.srcObject = myStream; }}
+                    className="shadow-md"
+                  />
+                </div>
+              )}
+
+              {myStream && isAudioOnly && (
+                <div className="flex flex-col items-center">
+                  <audio
+                    autoPlay
+                    ref={(audio) => { if (audio) audio.srcObject = myStream; }}
+                    className="border border-gray-300 rounded-lg shadow-md"
+                  />
+                </div>
+              )}
+
+              {remoteStream && !isAudioOnly && (
+                <div className="flex flex-col items-center">
+                  <video
+                    autoPlay
+                    width="500px"
+                    height="400px"
+                    ref={(video) => { if (video) video.srcObject = remoteStream; }}
+                    className="border border-gray-300 shadow-md"
+                  />
+                </div>
+              )}
+
+              {remoteStream && isAudioOnly && (
+                <div className="flex flex-col items-center">
+                  <audio
+                    autoPlay
+                    ref={(audio) => { if (audio) audio.srcObject = remoteStream; }}
+                    className="rounded-lg shadow-md"
+                  />
+                </div>
+              )}
+            </div>
           </div>
-        )}
-
-        {remoteStream && (
-          <div className="flex flex-col items-center">
-            <h1 className="text-xl font-semibold mb-2">Remote Stream</h1>
-            <video
-              autoPlay
-              height="200"
-              width="300"
-              ref={(video) => { if (video) video.srcObject = remoteStream; }}
-              className="border border-gray-300 rounded-lg shadow-md"
-            />
-          </div>
-        )}
+        </div>
       </div>
+
+     
+      <div className='fixed bottom-8 right-8'>
+        <div
+          className='w-[4vw] h-[4vw] rounded-full bg-[black] flex items-center justify-center cursor-pointer'
+          onClick={toggleChat}
+        >
+          { !isChatOpen ? <IoChatboxEllipsesSharp className='text-xl text-white' />
+          : <IoCloseSharp className='text-xl text-white' />}
+        </div>
+      </div>
+
+      
+      {isChatOpen && <RoomChat />} 
+
+      <div className="w-full h-[12%] bg-[#199FD9] flex items-center justify-center gap-5">
+        <div className="w-[3.5vw] h-[3.5vw] rounded-full bg-white flex items-center justify-center">
+          <FaMicrophone className="text-lg" />
+        </div>
+        <div className="w-[3.5vw] h-[3.5vw] rounded-full bg-white flex items-center justify-center">
+          <BsFillCameraVideoFill className="text-lg" />
+        </div>
+        <div className="w-[3.5vw] h-[3.5vw] rounded-full bg-red-600 flex items-center justify-center">
+          <MdCallEnd className="text-lg text-white" />
+        </div>
       </div>
     </div>
   );

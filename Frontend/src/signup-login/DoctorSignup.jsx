@@ -1,21 +1,23 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useUser } from '../context/UserContext';
+import { useDoctor } from '../context/DoctorContext';
 
-const Signup = () => {
+const DoctorSignup = () => {
   const [formData, setFormData] = useState({
     fullname: '',
     mobileNumber: '',
     password: '',
+    specialization:'',
+    experience:''
   });
   
   const [flashMessage, setFlashMessage] = useState('');
-  const userContext = useUser();
-  const { setUserName,setUserId,setIsPrivateMode } = userContext || {}; 
+  const doctorContext = useDoctor();
+  const { setDoctor } = doctorContext || {}; 
   const navigate = useNavigate();
 
-  if (!userContext) {
+  if (!doctorContext) {
     console.error('useUser is returning undefined. Ensure UserProvider is wrapping this component.');
   }
 
@@ -26,21 +28,18 @@ const Signup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setUserName(''); 
-    setUserId('')
+    setDoctor(''); 
     try {
-      const response = await axios.post('http://localhost:3000/users/register', formData);
+      const response = await axios.post('http://localhost:3000/doctor/registerDoctor', formData);
       
       if (response.data.message === "Account created successfully.") {
-        setUserName(formData.fullname);
-        setUserId(response.data.user.id)
-        setIsPrivateMode(response.data.user.privateMode)
+        setDoctor(formData.fullname);
         navigate('/');
       }
     } catch (error) {
       if (error.response && error.response.status === 409) {
         setFlashMessage(error.response.data.message);
-        setFormData({ fullname: '', mobileNumber: '', password: '' });
+        setFormData({ fullname: '', mobileNumber: '', password: '' ,specialization:'' , experience:''});
       } else {
         console.error(error);
       }
@@ -57,8 +56,8 @@ const Signup = () => {
       )}
       
       <div className='w-full flex justify-center gap-10 border-[1px] border-[#f0f0f5] h-[8vh]'>
-        <NavLink to="/login" className={({ isActive }) => isActive ? 'border-b-[4px] border-[#199FD9] text-[#199FD9] py-[0.9rem]' : 'py-[0.9rem]'}><h1 className='text-sm'>Login</h1></NavLink>
-        <NavLink to="/signup" className={({ isActive }) => isActive ? 'border-b-[4px] border-[#199FD9] text-[#199FD9] py-[0.9rem]' : 'py-[0.9rem]'}><h1 className='text-sm'>Register</h1></NavLink>
+        <NavLink to="/doctor_login" className={({ isActive }) => isActive ? 'border-b-[4px] border-[#199FD9] text-[#199FD9] py-[0.9rem]' : 'py-[0.9rem]'}><h1 className='text-sm'>Login</h1></NavLink>
+        <NavLink to="/doctor_signup" className={({ isActive }) => isActive ? 'border-b-[4px] border-[#199FD9] text-[#199FD9] py-[0.9rem]' : 'py-[0.9rem]'}><h1 className='text-sm'>Register</h1></NavLink>
       </div>
 
       <div className='flex gap-5'>
@@ -67,17 +66,17 @@ const Signup = () => {
         </div>
         
         <div className='w-[50%] h-[81vh] flex justify-start items-center'>
-          <div className='w-[30vw] h-[65vh] border-[1px] border-[#f0f0f5]'>
-            <div className='w-full h-[12%] border-b-[1px] border-[#f0f0f5] flex items-center px-8 justify-between'>
-              <h1 className='font-semibold text-[#787887]'>Join Practo</h1>
-              <div className='flex'><h1 className='text-xs'>Are you a doctor?</h1><NavLink className='text-xs text-[#F4B648] font-medium' to="/doctor_signup">Register Here</NavLink></div>
+          <div className='w-[30vw] border-[1px] border-[#f0f0f5]'>
+            <div className='w-full  border-b-[1px] border-[#f0f0f5] flex items-center justify-between px-8 py-2'>
+                <h1 className='text-sm'>Join 125,000+ doctors</h1>
+              <NavLink to="/signup" className='font-semibold text-[#13BEF0] text-sm'>Not a doctor?</NavLink>
             </div>
             
             <div className='w-full'>
               <form onSubmit={handleSubmit}>
                 <div className="flex flex-col items-center justify-center lg:py-0">
                   <div className="w-full rounded-lg md:mt-0 sm:max-w-md xl:p-0">
-                    <div className="space-y-3 md:space-y-3 sm:px-8 py-4">
+                    <div className="space-y-3 md:space-y-2 sm:px-8 py-2">
                       
                       <div>
                         <label className="block mb-2 text-sm font-medium text-gray-900">
@@ -85,7 +84,7 @@ const Signup = () => {
                         </label>
                         <input
                           placeholder="Full Name"
-                          className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg block w-full p-2.5"
+                          className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg block w-full p-2"
                           name="fullname"
                           type="text"
                           value={formData.fullname}
@@ -99,11 +98,39 @@ const Signup = () => {
                           Mobile Number
                         </label>
                         <input
-                          className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg block w-full p-2.5"
+                          className="bg-gray-50 border border-gray-300 text-gray-900  sm:text-sm rounded-lg block w-full p-2"
                           placeholder="Mobile Number"
                           name="mobileNumber"
                           type="number"
                           value={formData.mobileNumber}
+                          onChange={handleChange}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-2 text-sm font-medium text-gray-900">
+                        Specialization
+                        </label>
+                        <input
+                          className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg block w-full p-2"
+                          placeholder="Specialization"
+                          name="specialization"
+                          type="text"
+                          value={formData.specialization}
+                          onChange={handleChange}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-2 text-sm font-medium text-gray-900">
+                          Experience 
+                        </label>
+                        <input
+                          className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg block w-full p-2"
+                          placeholder="Experience"
+                          name="experience"
+                          type="number"
+                          value={formData.experience}
                           onChange={handleChange}
                           required
                         />
@@ -114,7 +141,7 @@ const Signup = () => {
                           Create Password
                         </label>
                         <input
-                          className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg block w-full p-2.5"
+                          className="bg-gray-50 border border-gray-300 text-gray-900 sm:text-sm rounded-lg block w-full p-2"
                           placeholder="Password"
                           name="password"
                           type="password"
@@ -163,4 +190,4 @@ const Signup = () => {
   );
 };
 
-export default Signup;
+export default DoctorSignup;
