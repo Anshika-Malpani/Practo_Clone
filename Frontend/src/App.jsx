@@ -12,6 +12,9 @@ import DoctorLogin from './signup-login/DoctorLogin';
 import { useUser } from './context/UserContext';
 import { ChatContextProvider } from './context/ChatContext';
 import Chat from './components/Chat';
+import ConsultNow from './components/ConsultNow';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 
 function App() {
@@ -21,6 +24,7 @@ function App() {
     <ChatContextProvider user={userId}>
     <Router>
       <Navbar />
+      <ToastContainer />
       <Routes>
         <Route path="/" element={<VideoConsult />} />
         <Route path="/signup" element={<Signup />} />
@@ -32,6 +36,7 @@ function App() {
         <Route path="/doctor_signup" element={<DoctorSignup />} />
         <Route path="/doctor_login" element={<DoctorLogin />} />
         <Route path="/chat" element={<Chat />} />
+        <Route path="/consultnow" element={<ConsultNow />} />
       </Routes>
     </Router>
     </ChatContextProvider>

@@ -24,8 +24,10 @@ const UserChat = ({ chat, userId }) => {
   return (
     <div className="">
       
+
+      
       <div className='w-full flex justify-center'>
-      <div className='w-[90%] flex items-center justify-center bg-white mt-4 rounded-md'>
+      {/* <div className='w-[90%] flex items-center justify-center bg-white mt-4 rounded-md'>
       <IoSearchSharp className='text-black text-lg rotate-90' />
       <input
         type="text"
@@ -33,11 +35,9 @@ const UserChat = ({ chat, userId }) => {
         value={searchQuery}
         onChange={handleSearchChange}
         className="p-2  w-[85%] focus:outline-none  text-black"
-      /></div>
+      /></div> */}
       </div>
-
-      
-     <div className='overflow-y-auto userChats'>
+     <div className='overflow-y-auto userChats '>
      {filteredUser && (
         <div className="flex gap-2 items-center transition-all ease-in-out duration-150 hover:bg-[#0e587e] cursor-pointer px-4 py-2">
           <div className="w-[15%] relative">

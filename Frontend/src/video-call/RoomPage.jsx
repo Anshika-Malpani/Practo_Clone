@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback, useState, useRef } from "react";
 import peer from "../service/peer";
 import { useSocket } from "../context/SocketProvider";
 import { FaMicrophone } from "react-icons/fa";
@@ -8,6 +8,8 @@ import { MdCallEnd } from "react-icons/md";
 import { IoChatboxEllipsesSharp, IoCloseSharp } from "react-icons/io5"; // Import chat icons
 import Chat from '../components/Chat'; // Import the Chat component
 import RoomChat from "../components/RoomChat";
+import { BsRecordCircle } from "react-icons/bs";
+import { PiRecordFill } from "react-icons/pi";
 
 const RoomPage = () => {
   const socket = useSocket();
@@ -21,9 +23,71 @@ const RoomPage = () => {
   const [joinMessage, setJoinMessage] = useState("");
   const [userCount, setUserCount] = useState(0);
   const [isVideoCallStarted, setIsVideoCallStarted] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false); 
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+  const [recordingChunks, setRecordingChunks] = useState([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorder = useRef(null); // Ref for MediaRecorder
+  const recordedChunks = useRef([]); // Store video chunks
+
+  
+  useEffect(() => {
+    return () => {
+      if (mediaRecorder) {
+        mediaRecorder.stop();
+      }
+    };
+  }, [mediaRecorder]);
+
+
+  const startRecording = () => {
+    recordedChunks.current = []; // Clear old chunks
+    const combinedStream = new MediaStream([
+      ...myStream.getTracks(),
+      ...(remoteStream ? remoteStream.getTracks() : []),
+    ]);
+
+    mediaRecorder.current = new MediaRecorder(combinedStream);
+
+    mediaRecorder.current.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        recordedChunks.current.push(event.data);
+      }
+    };
+
+    mediaRecorder.current.onstop = () => {
+      downloadRecording();
+    };
+
+    mediaRecorder.current.start();
+    setIsRecording(true);
+  };
+
+  const stopRecording = () => {
+    mediaRecorder.current.stop();
+    setIsRecording(false);
+  };
+
+  const downloadRecording = () => {
+    const blob = new Blob(recordedChunks.current, { type: "video/webm" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `recording_${new Date().toISOString()}.webm`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+
+  // const stopRecording = useCallback(() => {
+  //   if (mediaRecorder) {
+  //     mediaRecorder.stop();
+  //     setIsRecording(false);
+  //   }
+  // }, [mediaRecorder]);
+
+
 
   const handleUserJoined = useCallback(({ email, id }) => {
     setRemoteSocketId(id);
@@ -45,7 +109,7 @@ const RoomPage = () => {
     socket.emit("user:call", { to: remoteSocketId, offer, isAudioOnly: !videoCall });
     setMyStream(stream);
     setIsAudioOnly(!videoCall);
-    
+
     if (videoCall) {
       socket.emit("video:call:started", { to: remoteSocketId });
       setIsVideoCallStarted(true);
@@ -120,7 +184,7 @@ const RoomPage = () => {
 
   useEffect(() => {
     socket.on("user:joined", handleUserJoined);
-    socket.on("incomming:call", handleIncommingCall);
+    socket.on("incoming:call", handleIncommingCall);
     socket.on("call:accepted", handleCallAccepted);
     socket.on("peer:nego:needed", handleNegoNeedIncomming);
     socket.on("peer:nego:final", handleNegoNeedFinal);
@@ -135,7 +199,7 @@ const RoomPage = () => {
 
     return () => {
       socket.off("user:joined", handleUserJoined);
-      socket.off("incomming:call", handleIncommingCall);
+      socket.off("incoming:call", handleIncommingCall);
       socket.off("call:accepted", handleCallAccepted);
       socket.off("peer:nego:needed", handleNegoNeedIncomming);
       socket.off("peer:nego:final", handleNegoNeedFinal);
@@ -161,7 +225,7 @@ const RoomPage = () => {
   };
 
   const toggleChat = () => {
-    setIsChatOpen(!isChatOpen); 
+    setIsChatOpen(!isChatOpen);
   };
 
   return (
@@ -275,19 +339,19 @@ const RoomPage = () => {
         </div>
       </div>
 
-     
+
       <div className='fixed bottom-8 right-8'>
         <div
           className='w-[4vw] h-[4vw] rounded-full bg-[black] flex items-center justify-center cursor-pointer'
           onClick={toggleChat}
         >
-          { !isChatOpen ? <IoChatboxEllipsesSharp className='text-xl text-white' />
-          : <IoCloseSharp className='text-xl text-white' />}
+          {!isChatOpen ? <IoChatboxEllipsesSharp className='text-xl text-white' />
+            : <IoCloseSharp className='text-xl text-white' />}
         </div>
       </div>
 
-      
-      {isChatOpen && <RoomChat />} 
+
+      {isChatOpen && <RoomChat />}
 
       <div className="w-full h-[12%] bg-[#199FD9] flex items-center justify-center gap-5">
         <div className="w-[3.5vw] h-[3.5vw] rounded-full bg-white flex items-center justify-center">
@@ -297,7 +361,24 @@ const RoomPage = () => {
           <BsFillCameraVideoFill className="text-lg" />
         </div>
         <div className="w-[3.5vw] h-[3.5vw] rounded-full bg-red-600 flex items-center justify-center">
-          <MdCallEnd className="text-lg text-white" />
+          <MdCallEnd className="text-lg text-white" /> 
+        </div>
+        <div className="flex gap-4">
+          {!isRecording ? (
+            <button
+              onClick={startRecording}
+              className="w-[3.5vw] h-[3.5vw] rounded-full bg-white flex items-center justify-center"
+            >
+             <PiRecordFill className="text-xl"  />
+            </button>
+          ) : (
+            <button
+              onClick={stopRecording}
+              className="w-[3.5vw] h-[3.5vw] rounded-full bg-white flex items-center justify-center"
+            >
+              <PiRecordFill className="text-xl text-red-500"  />
+            </button>
+          )}
         </div>
       </div>
     </div>

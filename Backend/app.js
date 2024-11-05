@@ -9,6 +9,8 @@ const usersRouter=require("./routes/userRouter")
 const docotrsRouter=require("./routes/doctorRouter")
 const chatRouter=require("./routes/chatRouter")
 const messageRouter=require("./routes/messageRouter")
+const consulationRouter=require("./routes/consulationRouter")
+const meetingRouter=require("./routes/meetingRouter")
 const signalingServer = require('./signalingServer');
 
 require("dotenv").config();
@@ -37,6 +39,10 @@ app.use("/doctor",docotrsRouter)
 app.use("/chat",chatRouter)
 
 app.use("/messages",messageRouter)
+
+app.use("/consultation",consulationRouter)
+
+app.use("/meeting",meetingRouter)
 
 mongooseConnection()
 

@@ -14,16 +14,19 @@ const DoctorLogin = () => {
 
   const [flashMessage, setFlashMessage] = useState('');
   const doctorContext = useDoctor();
-  const { setDoctor } = doctorContext || {}; 
+  const { setDoctor,setDoctorId } = doctorContext || {}; 
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setDoctor(''); 
+    setDoctorId(''); 
     try {
       const response = await axios.post('http://localhost:3000/doctor/loginDoctor', formData, { withCredentials: true });
       if (response.data.message === "Login successfully") {
         setDoctor(response.data.doctor.fullname);
+        setDoctorId(response.data.doctor.id);
+        
         navigate('/'); 
     }
     } catch (error) {

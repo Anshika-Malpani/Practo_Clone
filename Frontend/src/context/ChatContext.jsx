@@ -141,25 +141,34 @@ export const ChatContextProvider = ({ children, user }) => {
         setUserChats((prev) => [...prev, response])
     }, [])
 
-    const sendTextMessage = useCallback(async (textMessage,sender,currentChatId,setTextMessage) => {
+    const sendTextMessage = useCallback(async (messageData) => {
+    const formData = new FormData();
+    console.log('media', messageData);
+    
+    formData.append('media', messageData.media);
+    formData.append('chatId', messageData.chatId);
+    formData.append('senderId', messageData.senderId);
+    formData.append('text', messageData.text || null); 
 
-        if (!textMessage) return console.log("You must type something....");
-        
-        const response = await postRequest(`${baseUrl}/messages`, JSON.stringify({
-            chatId:currentChatId,
-            senderId:sender,
-            text:textMessage
-        }))
+    try {
+        const response = await fetch(`${baseUrl}/messages`, {
+            method: 'POST',
+            body: formData,
+        });
 
-        if (response.error) {
-            return setSendTextMessageError(response);
+        const data = await response.json();
 
+        if (data.error) {
+            return setSendTextMessageError(data);
         }
 
-        setNewMessage(response)
-        setMessages((prev) => [...prev, response])
-        setTextMessage(" ")
-    }, [])
+        setNewMessage(data);
+        setMessages((prev) => [...prev, data]);
+    } catch (error) {
+        console.error("Error sending message:", error);
+    }
+}, []);
+
 
     return (
         <ChatContext.Provider value={{ userChats, isUserChatsLoading, userChatsError, potentialChats, createChat, updateCurrentChat,messages,ismessagesLoading,messagesError,currentChat,sendTextMessage,onlineUsers }}>

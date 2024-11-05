@@ -41,9 +41,14 @@ const FirstFold = () => {
                     <div className='flex gap-5'>
     {
         isLoggedIn && !isDoctorLoggedIn ? ( 
-            <NavLink to="/lobby">
+           <div className='flex gap-4'>
+             <NavLink to="/consultnow">
                 <button className='bg-[#199FD9] px-5 py-2 text-white rounded-md text-lg font-semibold'>Consult Now</button>
             </NavLink>
+             <NavLink to="/lobby">
+                <button className='bg-[#199FD9] px-5 py-2 text-white rounded-md text-lg font-semibold'>Join Lobby</button>
+            </NavLink>
+           </div>
         ) : null 
     }
     {
@@ -59,6 +64,7 @@ const FirstFold = () => {
             )
         )
     }
+    
 </div>
 
                     <div className='flex items-center gap-3 mt-6'>

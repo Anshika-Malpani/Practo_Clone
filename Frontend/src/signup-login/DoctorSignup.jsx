@@ -14,7 +14,7 @@ const DoctorSignup = () => {
   
   const [flashMessage, setFlashMessage] = useState('');
   const doctorContext = useDoctor();
-  const { setDoctor } = doctorContext || {}; 
+  const { setDoctor,setDoctorId } = doctorContext || {}; 
   const navigate = useNavigate();
 
   if (!doctorContext) {
@@ -29,11 +29,13 @@ const DoctorSignup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setDoctor(''); 
+    setDoctorId(''); 
     try {
       const response = await axios.post('http://localhost:3000/doctor/registerDoctor', formData);
       
       if (response.data.message === "Account created successfully.") {
         setDoctor(formData.fullname);
+        setDoctorId(response.data.doctor.id);
         navigate('/');
       }
     } catch (error) {
