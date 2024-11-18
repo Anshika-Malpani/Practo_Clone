@@ -39,7 +39,7 @@ router.put('/:id/privateMode', async (req, res) => {
     const userId = req.params.id;
     const { privateMode } = req.body;
 
-    // Update the user's privateMode in the database
+   
     const user = await userModel.findByIdAndUpdate(userId, { privateMode }, { new: true });
 
     if (!user) {
@@ -60,7 +60,7 @@ router.get('/:userId/meetings', async (req, res) => {
     const meetings = await meetingModel.find()
       .populate({
         path: 'consultationId',
-        match: { patientId: userId },  // Filter based on patientId
+        match: { patientId: userId },  
       })
       .exec();
 

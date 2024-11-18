@@ -126,12 +126,15 @@ const Navbar = () => {
                     <div className=''>
                         <h1 className='font-semibold tracking-tight text-[0.9rem]'>Find Doctors</h1>
                     </div>
-                    <NavLink to="/" className='py-[10px] flex items-center border-b-4 border-[#199FD9]'>
-                        <h1 className='font-semibold tracking-tight text-[#28328c] text-[0.9rem] mt-1'>Video Consult</h1>
+                    <NavLink to="/" className={({ isActive }) => isActive ? 'pb-[10px] pt-[13px]  border-b-4 border-[#199FD9] ':''}>
+                        <h1 className={'font-semibold tracking-tight  text-[0.9rem] '}>Video Consult</h1>
                     </NavLink >
                     <div className=''>
                         <h1 className='font-semibold tracking-tight text-[0.9rem]'>Surgeries</h1>
                     </div>
+                    <NavLink to="/business" className={({ isActive }) => isActive ? 'pb-[10px] pt-[13px]  border-b-4 border-[#199FD9] ':''}>
+                        <h1 className='font-semibold tracking-tight  text-[0.9rem] '>Business</h1>
+                    </NavLink >
                 </div>
                 <div className='h-full w-[55%]  flex items-center  gap-4 pl-52'>
                     <div className='flex items-center justify-center gap-1'>

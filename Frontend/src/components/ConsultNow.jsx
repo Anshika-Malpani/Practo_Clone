@@ -13,7 +13,7 @@ const ConsultNow = () => {
     const [selectedDoctorId, setSelectedDoctorId] = useState('');
     const navigate = useNavigate();
 
-    // Fetch doctors and their specializations
+   
     useEffect(() => {
         axios.get('http://localhost:3000/doctor')
             .then((response) => {

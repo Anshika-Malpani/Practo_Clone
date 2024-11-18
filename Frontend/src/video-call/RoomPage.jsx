@@ -1,18 +1,18 @@
-import React, { useEffect, useCallback, useState, useRef } from "react";
-import peer from "../service/peer";
+import React, { useEffect, useCallback, useState } from "react";
 import { useSocket } from "../context/SocketProvider";
-import { FaMicrophone } from "react-icons/fa";
-import { BsFillCameraVideoFill } from "react-icons/bs";
-import { NavLink, useNavigate } from 'react-router-dom';
-import { MdCallEnd } from "react-icons/md";
-import { IoChatboxEllipsesSharp, IoCloseSharp } from "react-icons/io5"; // Import chat icons
-import Chat from '../components/Chat'; // Import the Chat component
+import { useNavigate, useParams } from 'react-router-dom';
+import { IoChatboxEllipsesSharp, IoCloseSharp } from "react-icons/io5";
 import RoomChat from "../components/RoomChat";
-import { BsRecordCircle } from "react-icons/bs";
-import { PiRecordFill } from "react-icons/pi";
+import VideoPlayer from './VideoPlayer';
+import ControlPanel from './ContolPanel';
+import { useVideoControls } from "../hooks/useVideoControls";
+import { useAudioControls } from "../hooks/useAudioControls";
+import peer from "../service/peer"
 
 const RoomPage = () => {
   const socket = useSocket();
+  const { roomId } = useParams();
+  const navigate = useNavigate();
   const [remoteSocketId, setRemoteSocketId] = useState(null);
   const [myStream, setMyStream] = useState();
   const [remoteStream, setRemoteStream] = useState();
@@ -25,78 +25,40 @@ const RoomPage = () => {
   const [isVideoCallStarted, setIsVideoCallStarted] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [recordingChunks, setRecordingChunks] = useState([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorder = useRef(null); // Ref for MediaRecorder
-  const recordedChunks = useRef([]); // Store video chunks
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [moreOption, setMoreOption] = useState(false);
+  const [remoteVideoBlurred, setRemoteVideoBlurred] = useState(false); 
+  const [isVideoMuted, setIsVideoMuted] = useState(false);
+  const { isVideoBlurred, toggleVideoBlur, startRecording, stopRecording, isRecording } = useVideoControls(myStream, remoteStream, socket, remoteSocketId);
+  const { isAudioMuted, toggleAudio } = useAudioControls(myStream);
 
-  
+  const toggleVideo = useCallback(() => {
+    if (myStream) {
+      myStream.getVideoTracks().forEach(track => {
+        track.enabled = isVideoMuted;
+      });
+      setIsVideoMuted(prev => !prev);
+    }
+  }, [isVideoMuted, myStream]);
+
   useEffect(() => {
-    return () => {
-      if (mediaRecorder) {
-        mediaRecorder.stop();
-      }
-    };
-  }, [mediaRecorder]);
+    if (myStream && remoteStream && !isRecording) {
+      startRecording();
+    }
+  }, [myStream, remoteStream, isRecording, startRecording]);
 
+  useEffect(() => {
+    document.body.classList.toggle('dark', isDarkMode);
+  }, [isDarkMode]);
 
-  const startRecording = () => {
-    recordedChunks.current = []; // Clear old chunks
-    const combinedStream = new MediaStream([
-      ...myStream.getTracks(),
-      ...(remoteStream ? remoteStream.getTracks() : []),
-    ]);
-
-    mediaRecorder.current = new MediaRecorder(combinedStream);
-
-    mediaRecorder.current.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        recordedChunks.current.push(event.data);
-      }
-    };
-
-    mediaRecorder.current.onstop = () => {
-      downloadRecording();
-    };
-
-    mediaRecorder.current.start();
-    setIsRecording(true);
-  };
-
-  const stopRecording = () => {
-    mediaRecorder.current.stop();
-    setIsRecording(false);
-  };
-
-  const downloadRecording = () => {
-    const blob = new Blob(recordedChunks.current, { type: "video/webm" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `recording_${new Date().toISOString()}.webm`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-
-  // const stopRecording = useCallback(() => {
-  //   if (mediaRecorder) {
-  //     mediaRecorder.stop();
-  //     setIsRecording(false);
-  //   }
-  // }, [mediaRecorder]);
-
-
+  const toggleDarkMode = useCallback(() => {
+    setIsDarkMode(prevMode => !prevMode);
+  }, []);
 
   const handleUserJoined = useCallback(({ email, id }) => {
     setRemoteSocketId(id);
     const newUserCount = userCount + 1;
-    if (newUserCount === 1) {
-      setJoinMessage(`${email} has joined the room.`);
-    } else {
-      setJoinMessage(`${email} is in the room.`);
-    }
+    setJoinMessage(`${email} ${newUserCount === 1 ? 'has joined' : 'is in'} the room.`);
     setUserCount(newUserCount);
   }, [userCount]);
 
@@ -133,9 +95,7 @@ const RoomPage = () => {
   );
 
   const sendStreams = useCallback(() => {
-    for (const track of myStream.getTracks()) {
-      peer.peer.addTrack(track, myStream);
-    }
+    myStream.getTracks().forEach(track => peer.peer.addTrack(track, myStream));
   }, [myStream]);
 
   const handleCallAccepted = useCallback(
@@ -197,6 +157,12 @@ const RoomPage = () => {
       setIsVideoCallStarted(true);
     });
 
+    socket.on("video:blur:toggle", ({ from, isBlurred }) => {
+      if (from !== socket.id) {
+        setRemoteVideoBlurred(isBlurred);
+      }
+    });
+
     return () => {
       socket.off("user:joined", handleUserJoined);
       socket.off("incoming:call", handleIncommingCall);
@@ -205,6 +171,7 @@ const RoomPage = () => {
       socket.off("peer:nego:final", handleNegoNeedFinal);
       socket.off("chat:message");
       socket.off("video:call:started");
+      socket.off("video:blur:toggle");
     };
   }, [
     socket,
@@ -215,25 +182,46 @@ const RoomPage = () => {
     handleNegoNeedFinal,
   ]);
 
-  const handleSendMessage = () => {
-    if (newMessage.trim()) {
-      const message = { text: newMessage, from: "me" };
-      setMessages((prevMessages) => [...prevMessages, message]);
-      socket.emit("chat:message", { text: newMessage, to: remoteSocketId });
-      setNewMessage("");
-    }
-  };
+  useEffect(() => {
+    socket.on("call:ended", ({ from }) => {
+      console.log(`Call ended by ${from}`);
+      if (myStream) {
+        myStream.getTracks().forEach(track => track.stop());
+      }
+      if (remoteStream) {
+        remoteStream.getTracks().forEach(track => track.stop());
+      }
+      navigate('/');
+    });
 
-  const toggleChat = () => {
-    setIsChatOpen(!isChatOpen);
-  };
+    return () => {
+      socket.off("call:ended");
+    };
+  }, [socket, navigate, myStream, remoteStream]);
+
+  const handleCallEnd = useCallback(() => {
+    if (myStream) {
+      myStream.getTracks().forEach(track => track.stop());
+    }
+    stopRecording();
+    socket.emit("call:ended", { to: remoteSocketId });
+    navigate('/');
+  }, [myStream, stopRecording, socket, remoteSocketId, navigate]);
+
+  const toggleChat = useCallback(() => {
+    setIsChatOpen(prev => !prev);
+  }, []);
+
+  const handleMoreOption = useCallback(() => {
+    setMoreOption(prev => !prev);
+  }, []);
 
   return (
-    <div className="flex flex-col items-center bg-gray-100 h-[89vh]">
-      <div className="w-full h-[88%] flex items-center justify-center ">
-        <div className="flex items-center justify-center flex-col w-full h-full">
+    <div className={`flex flex-col items-center ${isDarkMode ? 'bg-black' : 'bg-gray-100'} h-[89vh]`}>
+      <div className="w-full h-[88%] flex items-center justify-center relative">
+        <div className="flex items-center justify-center flex-col w-full h-full gap-2">
           {!isVideoCallStarted && (
-            <div className="w-[17vw] h-[17vw] rounded-full">
+            <div className={`w-[17vw] h-[17vw] rounded-full ${isDarkMode ? 'bg-gray-100' : 'bg-gray-800'}`}>
               <img className="w-full h-full rounded-full object-cover" src="/images/userAvatar.png" alt="" />
             </div>
           )}
@@ -291,58 +279,16 @@ const RoomPage = () => {
             )}
 
             <div className="flex items-center justify-center gap-8 w-screen">
-              {myStream && !isAudioOnly && (
-                <div className="flex flex-col items-center">
-                  <video
-                    autoPlay
-                    width="500px"
-                    height="400px"
-                    ref={(video) => { if (video) video.srcObject = myStream; }}
-                    className="shadow-md"
-                  />
-                </div>
-              )}
-
-              {myStream && isAudioOnly && (
-                <div className="flex flex-col items-center">
-                  <audio
-                    autoPlay
-                    ref={(audio) => { if (audio) audio.srcObject = myStream; }}
-                    className="border border-gray-300 rounded-lg shadow-md"
-                  />
-                </div>
-              )}
-
-              {remoteStream && !isAudioOnly && (
-                <div className="flex flex-col items-center">
-                  <video
-                    autoPlay
-                    width="500px"
-                    height="400px"
-                    ref={(video) => { if (video) video.srcObject = remoteStream; }}
-                    className="border border-gray-300 shadow-md"
-                  />
-                </div>
-              )}
-
-              {remoteStream && isAudioOnly && (
-                <div className="flex flex-col items-center">
-                  <audio
-                    autoPlay
-                    ref={(audio) => { if (audio) audio.srcObject = remoteStream; }}
-                    className="rounded-lg shadow-md"
-                  />
-                </div>
-              )}
+              <VideoPlayer stream={myStream} isAudioOnly={isAudioOnly} isBlurred={isVideoBlurred} />
+              <VideoPlayer stream={remoteStream} isAudioOnly={isAudioOnly} isBlurred={remoteVideoBlurred} isRemote />
             </div>
           </div>
         </div>
       </div>
 
-
-      <div className='fixed bottom-8 right-8'>
+      <div className='fixed bottom-4 right-8'>
         <div
-          className='w-[4vw] h-[4vw] rounded-full bg-[black] flex items-center justify-center cursor-pointer'
+          className='w-[3.5vw] h-[3.5vw] rounded-full bg-[black] flex items-center justify-center cursor-pointer'
           onClick={toggleChat}
         >
           {!isChatOpen ? <IoChatboxEllipsesSharp className='text-xl text-white' />
@@ -350,35 +296,53 @@ const RoomPage = () => {
         </div>
       </div>
 
+      {isChatOpen && <RoomChat room={roomId} />}
 
-      {isChatOpen && <RoomChat />}
+      <div className="w-full h-[12%] bg-[#199FD9] flex items-center justify-center gap-5 ">
+        <ControlPanel
+          isAudioMuted={isAudioMuted}
+          isVideoMuted={isVideoMuted}
+          toggleAudio={toggleAudio}
+          toggleVideo={toggleVideo}
+          handleCallEnd={handleCallEnd}
+          handleMoreOption={handleMoreOption}
+        />
 
-      <div className="w-full h-[12%] bg-[#199FD9] flex items-center justify-center gap-5">
-        <div className="w-[3.5vw] h-[3.5vw] rounded-full bg-white flex items-center justify-center">
-          <FaMicrophone className="text-lg" />
-        </div>
-        <div className="w-[3.5vw] h-[3.5vw] rounded-full bg-white flex items-center justify-center">
-          <BsFillCameraVideoFill className="text-lg" />
-        </div>
-        <div className="w-[3.5vw] h-[3.5vw] rounded-full bg-red-600 flex items-center justify-center">
-          <MdCallEnd className="text-lg text-white" /> 
-        </div>
-        <div className="flex gap-4">
-          {!isRecording ? (
-            <button
-              onClick={startRecording}
-              className="w-[3.5vw] h-[3.5vw] rounded-full bg-white flex items-center justify-center"
-            >
-             <PiRecordFill className="text-xl"  />
-            </button>
-          ) : (
-            <button
-              onClick={stopRecording}
-              className="w-[3.5vw] h-[3.5vw] rounded-full bg-white flex items-center justify-center"
-            >
-              <PiRecordFill className="text-xl text-red-500"  />
-            </button>
-          )}
+        <div className={`w-[15vw]  absolute bottom-[10.8%] right-[34.5%] rounded-xl bg-[#199FD9] shadow-xl ${moreOption ? 'block' : 'hidden'}`}>
+          <div className="w-full h-full p-4 flex flex-col gap-3">
+            <div className="flex gap-2"> <label className="flex cursor-pointer select-none items-center">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={isDarkMode}
+                  onChange={toggleDarkMode}
+                  className="sr-only"
+                />
+                <div className="block h-[1.3rem] w-9 rounded-full border border-[#BFCEFF] bg-[#EAEEFB]"></div>
+                <div
+                  className={`dot bg-black absolute top-[2px] left-1 h-4 w-4 rounded-full transition-transform duration-300 ${isDarkMode ? 'translate-x-3' : 'translate-x-0'}`}
+                ></div>
+              </div>
+            </label>
+              <h1 className="text-white font-medium">Dark Mode</h1>
+            </div>
+            <div className="flex gap-2"> <label className="flex cursor-pointer select-none items-center">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={isVideoBlurred}
+                  onChange={toggleVideoBlur}
+                  className="sr-only"
+                />
+                <div className="block h-[1.3rem] w-9 rounded-full border border-[#BFCEFF] bg-[#EAEEFB]"></div>
+                <div
+                  className={`dot bg-black absolute top-[2px] left-1 h-4 w-4 rounded-full transition-transform duration-300 ${isVideoBlurred ? 'translate-x-3' : 'translate-x-0'}`}
+                ></div>
+              </div>
+            </label>
+              <h1 className="text-white font-medium">Blur Video</h1>
+            </div>
+          </div>
         </div>
       </div>
     </div>

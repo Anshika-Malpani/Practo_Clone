@@ -1,8 +1,8 @@
 const messageModel = require("../models/message-model");
-const cloudinary = require("../config/cloudinary"); // Import Cloudinary config
+const cloudinary = require("../config/cloudinary"); 
 const fs = require('fs');
 
-// Create a message with optional media
+
 module.exports.createMessage = async (req, res) => {
     const { chatId, senderId, text } = req.body;
   
@@ -11,7 +11,7 @@ module.exports.createMessage = async (req, res) => {
       console.log("media",req.file);
       
   
-      // Upload media to Cloudinary if a file is present
+    
       if (req.file) {
         const result = await cloudinary.uploader.upload(req.file.path, {
           resource_type: req.file.mimetype.startsWith('video') ? 'video' : 'image',
@@ -22,11 +22,10 @@ module.exports.createMessage = async (req, res) => {
           type: req.file.mimetype.startsWith('video') ? 'video' : 'image',
         };
   
-        // Remove the file from local storage
+       
         fs.unlinkSync(req.file.path);
       }
   
-      // Create the message with or without media
       const message = await messageModel.create({
         chatId,
         senderId,
@@ -41,7 +40,7 @@ module.exports.createMessage = async (req, res) => {
     }
   };
 
-// Get messages by chatId
+
 module.exports.getMessages = async (req, res) => {
   const { chatId } = req.params;
 

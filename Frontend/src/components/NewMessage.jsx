@@ -4,7 +4,7 @@ import { useSocket } from '../context/SocketProvider';
 import { useUser } from '../context/UserContext';
 import axios from 'axios';
 
-const NewMessage = ({ onClose, onStartPrivateChat }) => { // Add onStartPrivateChat prop
+const NewMessage = ({ onClose, onStartPrivateChat }) => {
   const socket = useSocket();
   const { userName } = useUser() || {};
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,7 +40,7 @@ const NewMessage = ({ onClose, onStartPrivateChat }) => { // Add onStartPrivateC
   const handleUserClick = (user) => {
     const roomName = [userName, user.fullname].sort().join('-');
     socket.emit('joinRoom', roomName);
-    onStartPrivateChat(user, roomName); // Call the function to start private chat
+    onStartPrivateChat(user, roomName); 
   };
 
   return (

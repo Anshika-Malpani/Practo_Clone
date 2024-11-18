@@ -5,30 +5,30 @@ import axios from 'axios';
 
 const ScheduleMeet = () => {
     const [date, setDate] = useState(''); 
-    const [time, setTime] = useState(''); // Separate state for time
+    const [time, setTime] = useState(''); 
     const [description, setDescription] = useState(''); 
     const { doctor } = useDoctor() || {};
     const query = new URLSearchParams(useLocation().search);
     const consultationId = query.get('consultationId'); 
-    const navigate = useNavigate(); // Hook for navigation
+    const navigate = useNavigate(); 
 
     const handleScheduleMeeting = async () => {
         try {
             const response = await axios.post('http://localhost:3000/meeting/schedule-meeting', {
                 consultationId,
-                doctor: `Dr. ${doctor}`, // Assuming doctor is a string
+                doctor: `Dr. ${doctor}`, 
                 date,
                 time,
                 description,
             });
 
             await axios.patch(`http://localhost:3000/consultation/${consultationId}`, { status: 'scheduled' });
-            // Navigate to another page or show success message
-            navigate('/'); // Redirect to a success page (create this route)
+           
+            navigate('/'); 
 
         } catch (error) {
             console.error('Error scheduling meeting:', error);
-            // Handle the error case here
+            
             alert('Failed to schedule the meeting. Please try again.');
         }
     };

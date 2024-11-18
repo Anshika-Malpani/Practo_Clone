@@ -97,3 +97,39 @@ input[type="checkbox"]:checked + div .dot {
   box-shadow: 20px 20px 60px #bebebe,
   -20px -20px 60px #ffffff;
 }
+
+.video-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.video-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1; /* Place behind the video */
+}
+
+.video-blur {
+  filter: blur(10px); /* Adjust blur amount as needed */
+}
+
+.video-image {
+  background-image: url('/Frontend/public/images/night.jpg'); /* Replace with your image path */
+  background-size: cover;
+  background-position: center;
+}
+
+
+.clinical-curve::after{
+  content: '';
+  background-color: #F7F0E6;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  display: block;
+    height: 4rem;
+    --tw-scale-x: 1.1;
+    transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}

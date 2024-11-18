@@ -5,7 +5,7 @@ import { IoSend } from "react-icons/io5";
 import { useSocket } from '../context/SocketProvider'; 
 import { useUser } from '../context/UserContext';
 
-const RoomChat = () => {
+const RoomChat = ({room}) => {
   const socket = useSocket(); // Get the socket instance
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -25,31 +25,41 @@ const RoomChat = () => {
 
   const handleSendMessage = () => {
     if (inputValue.trim()) {
-      const message = { text: inputValue, sender: socketId }; // Include sender's socket ID
-      setMessages(prevMessages => [...prevMessages, message]); // Update state with the new message
-      socket.emit('sendMessage', message); // Emit the message through the socket
-      setInputValue(''); // Clear the input field
+      const message = { text: inputValue, sender: socketId, room: room };
+      socket.emit('sendRoomMessage', message); 
+      setInputValue(''); 
     }
   };
 
+  useEffect(() => {
+   
+    socket.on('messageSent', (confirmationMessage) => {
+      setMessages(prevMessages => [...prevMessages, confirmationMessage]); 
+    });
+
+    return () => {
+      socket.off('messageSent');
+    };
+  }, [socket]);
+
   
   useEffect(() => {
-    // Set the client socket ID once connected
+    
     socket.on("connect", () => {
-      setSocketId(socket.id); // Store the client socket ID
+      setSocketId(socket.id);
     });
 
     const handleReceiveMessage = (message) => {
-      // Check if the message is from a different user (other client)
+     
       if (message.sender !== socketId) {
-        setMessages(prevMessages => [...prevMessages, message]); // Add received message to state
+        setMessages(prevMessages => [...prevMessages, message]); 
       }
     };
 
-    socket.on('receiveMessage', handleReceiveMessage); // Listen for incoming messages
+    socket.on('receiveRoomMessage', handleReceiveMessage); 
 
     return () => {
-      socket.off('receiveMessage', handleReceiveMessage); // Clean up the listener on unmount
+      socket.off('receiveRoomMessage', handleReceiveMessage); 
     };
   }, [socket, socketId]);
 
@@ -64,7 +74,7 @@ const RoomChat = () => {
     {
       (isLoggedIn) && <div className='relative'>
       <div
-        className='w-[4vw] h-[4vw] rounded-full bg-[black]  fixed bottom-8 right-8 flex items-center justify-center cursor-pointer'
+        className='w-[3.5vw] h-[3.5vw] rounded-full bg-[black]  fixed bottom-4 right-8 flex items-center justify-center cursor-pointer'
         onClick={toggleChat}
       >
        { !isOpen ? <IoChatboxEllipsesSharp className='text-xl  text-white' />

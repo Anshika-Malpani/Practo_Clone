@@ -58,7 +58,7 @@ const ChatBox = () => {
   };
 
   const handleSendMessage = () => {
-    if (textMessage.trim() === '' && !mediaFile) return; // Prevent sending empty messages
+    if (textMessage.trim() === '' && !mediaFile) return;
 
     const messageData = {
       text: textMessage,
@@ -67,12 +67,12 @@ const ChatBox = () => {
       media: mediaFile ? mediaFile : null,
     };
 
-    // Send message data including media if present
+   
     sendTextMessage(messageData);
 
-    // Reset input fields
-    setTextMessage(''); // Clear text message input
-    setMediaFile(null); // Reset file input after sending
+   
+    setTextMessage(''); 
+    setMediaFile(null);
   };
 
   return (
@@ -143,7 +143,7 @@ const ChatBox = () => {
 
       </div>
 
-      {/* Input Section */}
+     
       <div className='w-full h-[11%] border-t-[1px] border-gray-400 flex items-center pr-3 gap-2 relative'>
         <input
           type="file"

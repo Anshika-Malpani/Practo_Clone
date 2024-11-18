@@ -28,7 +28,7 @@ router.get('/:doctorId/consultations', async (req, res) => {
         const { doctorId } = req.params;
         
         const consultations = await consultationModel.find({ doctor_id: doctorId })
-        .sort({ consultationTime: -1 }); // Latest consultations first
+        .sort({ consultationTime: -1 }); 
         // console.log(consultations);
         res.status(200).json(consultations);
     } catch (error) {

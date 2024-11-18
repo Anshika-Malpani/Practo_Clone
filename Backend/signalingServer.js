@@ -52,6 +52,11 @@ io.on("connection", (socket) => {
     io.to(to).emit("call:accepted", { from: socket.id, ans });
   });
 
+  socket.on("video:blur:toggle", ({ to, isBlurred }) => {
+    console.log(`Video blur state changed by ${socket.id} to ${isBlurred}`);
+    io.to(to).emit("video:blur:toggle", { from: socket.id, isBlurred }); // Emit the new blur state to the other user
+  });
+
   // Handle peer negotiation needed
   socket.on("peer:nego:needed", ({ to, offer }) => {
     io.to(to).emit("peer:nego:needed", { from: socket.id, offer });
@@ -67,6 +72,25 @@ io.on("connection", (socket) => {
     console.log(`Video call started from ${socket.id} to ${to}`);
     io.to(to).emit("video:call:started");
   });
+
+  socket.on("call:ended", ({ to }) => {
+    console.log(`Call ended by ${socket.id}`);
+    io.to(to).emit("call:ended", { from: socket.id }); // Notify the other user
+
+    
+  });
+
+    // Handle sending a message to a specific room
+    socket.on("sendRoomMessage", (message) => {
+      const { room, text, sender } = message;
+      console.log(`Message from ${sender} in room ${room}: ${text}`);
+  
+      // Broadcast the message to all users in the room except the sender
+      socket.to(room).emit("receiveRoomMessage", { ...message, sender: socket.id });
+      
+      // Emit confirmation back to the sender
+      io.to(socket.id).emit("messageSent", message);
+    });
 
   socket.on("addNewUser", (userId) => {
     !onlineUsers.some(user => user.userId === userId) &&

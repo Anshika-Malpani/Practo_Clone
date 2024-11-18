@@ -70,7 +70,7 @@ const UserChat = ({ chat, userId }) => {
       )}
      </div>
 
-      {/* Display a message if no user matches the search */}
+   
       {!filteredUser && searchQuery && (
         <p className="text-center text-gray-200 my-2">No recipient found.</p>
       )}

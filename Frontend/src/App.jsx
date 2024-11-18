@@ -15,6 +15,7 @@ import Chat from './components/Chat';
 import ConsultNow from './components/ConsultNow';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import Business from './business/business';
 
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
       <ToastContainer />
       <Routes>
         <Route path="/" element={<VideoConsult />} />
+        <Route path="/business" element={<Business />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
         <Route path="/lobby" element={<LobbyScreen />} />
