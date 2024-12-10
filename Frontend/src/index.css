@@ -133,3 +133,19 @@ input[type="checkbox"]:checked + div .dot {
     --tw-scale-x: 1.1;
     transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 columns */
+  grid-template-rows: repeat(2, 1fr); /* 2 rows */
+  gap: 10px;
+  height: 90vh;
+}
+
+.video {
+  width:30vw;
+  height: 20vw;
+  border-radius: 8px;
+  object-fit: cover;
+  /* border: 2px white solid; */
+}

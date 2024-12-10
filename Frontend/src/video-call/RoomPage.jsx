@@ -31,6 +31,7 @@ const RoomPage = () => {
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const { isVideoBlurred, toggleVideoBlur, startRecording, stopRecording, isRecording } = useVideoControls(myStream, remoteStream, socket, remoteSocketId);
   const { isAudioMuted, toggleAudio } = useAudioControls(myStream);
+  
 
   const toggleVideo = useCallback(() => {
     if (myStream) {

@@ -39,7 +39,7 @@ const mediaCodecs = [
 const createWorker = async () => {
   worker = await mediasoup.createWorker({
     rtcMinPort: 2000,
-    rtcMaxPort: 2020,
+    rtcMaxPort: 2100,
   });
   console.log(`Worker PID: ${worker.pid}`);
 
@@ -61,7 +61,7 @@ const createWebRtcTransport = async (router) => {
         listenIps: [
           {
             ip: '0.0.0.0', // replace with relevant IP address
-            announcedIp: '192.168.1.33',
+            announcedIp: '192.168.1.36',
           }
         ],
         enableUdp: true,
@@ -149,8 +149,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on('joinRoom', async ({ roomCode }, callback) => {
-    console.log("roomCode",roomCode);
-    
+    console.log("roomCode", roomCode);
+
     // create Router if it does not exist
     // const router1 = rooms[roomName] && rooms[roomName].get('data').router || await createRoom(roomName, socket.id)
     const router1 = await createRoom(roomCode, socket.id)
@@ -169,9 +169,10 @@ io.on("connection", (socket) => {
 
     // get Router RTP Capabilities
     const rtpCapabilities = router1.rtpCapabilities
+    const socketId = socket.id
 
     // call callback from the client and send back the rtpCapabilities
-    callback({ rtpCapabilities })
+    callback({ rtpCapabilities, socketId })
   })
 
   const createRoom = async (roomCode, socketId) => {
@@ -339,7 +340,7 @@ io.on("connection", (socket) => {
       producer.close();
     });
     console.log(producers);
-    
+
     callback({ id: producer.id, producersExist: producers.length > 1 ? true : false });
   });
 
@@ -396,6 +397,7 @@ io.on("connection", (socket) => {
           kind: consumer.kind,
           rtpParameters: consumer.rtpParameters,
           serverConsumerId: consumer.id,
+          socketId:socket.id
         }
 
         // send the parameters to the client
@@ -411,10 +413,25 @@ io.on("connection", (socket) => {
     }
   })
 
-  socket.on('consumer-resume', async ({serverConsumerId}) => {
+  // Server: Handle blur toggle
+ // Server: Handle blur toggle
+socket.on("video:blur:toggle", ({ to, isBlurred,producerId }) => {
+  io.to(to).emit("video:blurred", { producerId: producerId, isBlurred });
+});
+
+
+  socket.on('consumer-resume', async ({ serverConsumerId }) => {
     console.log('consumer resume');
     const { consumer } = consumers.find(consumerData => consumerData.consumer.id === serverConsumerId)
     await consumer.resume();
+  });
+  socket.on("sendRoomMessage", (message) => {
+    const { room, text, sender } = message;
+    console.log(`Message from ${sender} in room ${room}: ${text}`);
+
+    socket.broadcast.emit("receiveRoomMessage", message);
+
+    socket.emit("messageSent", message);
   });
 });
 
