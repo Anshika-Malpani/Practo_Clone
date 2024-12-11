@@ -45,14 +45,13 @@ const VideoCall = () => {
   const toggleVideoBlur = () => {
     const updatedBlurState = !isVideoBlurred;
     setIsVideoBlurred(updatedBlurState);
-  
-    // Notify other users about the blur state
-    if(producerId)
-    {
+
+
+    if (producerId) {
       socket.emit("toggle-video-blur", { producerId, isBlurred: updatedBlurState });
     }
   };
-  
+
   useEffect(() => {
     socket.on("toggle-video-blur", ({ producerId, isBlurred }) => {
       setConsumers((prevConsumers) =>
@@ -63,12 +62,12 @@ const VideoCall = () => {
         )
       );
     });
-  
+
     return () => {
       socket.off("toggle-video-blur");
     };
   }, [socket]);
-  
+
 
 
   const toggleDarkMode = useCallback(() => {
@@ -130,19 +129,20 @@ const VideoCall = () => {
 
 
     if (roomCode) {
-      joinRoom(); // Call joinRoom when roomCode is available
+      joinRoom();
     }
   };
-
   const joinRoom = () => {
-    // console.log("Emitting joinRoom with roomCode:", roomCode); 
-    socket.emit(`joinRoom`, { roomCode }, (data) => {
-      // console.log("Router RTP Capabilities..", data.rtpCapabilities, data.socketId);
-      setSocketId(data.socketId)
+    socket.emit('joinRoom', { roomCode }, (data) => {
+      setSocketId(data.socketId);
       setRtpCapabilities(data.rtpCapabilities);
       createDevice(data.rtpCapabilities);
+
+
     });
   };
+
+
 
   const getLocalStream = () => {
     navigator.mediaDevices.getUserMedia({
@@ -226,6 +226,7 @@ const VideoCall = () => {
             console.log(producersExist);
             setProducerId(id)
 
+
             if (producersExist) getProducers(newDevice)
           });
         } catch (error) {
@@ -241,7 +242,7 @@ const VideoCall = () => {
     try {
 
       const videoTrack = localVideoRef.current.stream.getVideoTracks()[0];
-
+      const audioTrack = localVideoRef.current.stream.getAudioTracks()[0]
 
       const videoProducer = await newProducerTransport.produce({
         track: videoTrack,
@@ -249,9 +250,26 @@ const VideoCall = () => {
         codecOptions: param.codecOptions,
       });
 
+      const audioProducer = await newProducerTransport.produce({
+        track: audioTrack,
+        encodings: undefined, 
+        codecOptions: undefined, 
+      });
+     
+      console.log(videoProducer);
+      console.log(audioProducer);
+
+      setAudioProducer(audioProducer);
+      setVideoProducer(videoProducer)
+
+
+
 
       videoProducer.on("trackended", () => console.log("Video track ended"));
       videoProducer.on("transportclose", () => console.log("Video transport closed"));
+
+      audioProducer.on("trackended", () => console.log("Audio track ended"));
+      audioProducer.on("transportclose", () => console.log("Audio transport closed"));
 
 
     } catch (error) {
@@ -328,6 +346,8 @@ const VideoCall = () => {
           { id: remoteProducerId, kind: params.kind, stream: newStream },
         ];
       });
+
+
 
       socket.emit('consumer-resume', { serverConsumerId: params.serverConsumerId });
       setConsumer(newConsumer);
@@ -434,6 +454,7 @@ const VideoCall = () => {
                 <input
                   type="checkbox"
                   checked={isVideoBlurred}
+                  onChange={toggleVideoBlur}
                   className="sr-only"
                 />
                 <div className="block h-[1.3rem] w-9 rounded-full border border-[#BFCEFF] bg-[#EAEEFB]"></div>
