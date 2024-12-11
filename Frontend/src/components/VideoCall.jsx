@@ -42,65 +42,30 @@ const VideoCall = () => {
 
   console.log(consumers);
 
-  const toggleVideoBlur = useCallback(async () => {
-    const newBlurState = !isVideoBlurred;
-    setIsVideoBlurred(newBlurState);
+  const toggleVideoBlur = () => {
+    const updatedBlurState = !isVideoBlurred;
+    setIsVideoBlurred(updatedBlurState);
 
-    const localStream = localVideoRef.current.stream;
-    const videoTrack = localStream.getVideoTracks()[0];
 
-    if (newBlurState) {
-      // Create a blurred video track using canvas
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
-      canvas.width = localVideoRef.current.videoWidth || 640;
-      canvas.height = localVideoRef.current.videoHeight || 480;
-
-      const renderBlurredVideo = () => {
-        context.filter = "blur(10px)";
-        context.drawImage(localVideoRef.current, 0, 0, canvas.width, canvas.height);
-        requestAnimationFrame(renderBlurredVideo);
-      };
-
-      renderBlurredVideo();
-
-      const blurredStream = canvas.captureStream();
-      const blurredTrack = blurredStream.getVideoTracks()[0];
-
-      // Replace the current video track in the producer
-      if (videoProducer) {
-        await videoProducer.replaceTrack({ track: blurredTrack });
-      }
-    } else {
-      // Restore the original video track
-      if (videoProducer) {
-        await videoProducer.replaceTrack({ track: videoTrack });
-      }
+    if (producerId) {
+      socket.emit("toggle-video-blur", { producerId, isBlurred: updatedBlurState });
     }
-
-    // Notify others of the blur status
-    socket.emit("video:blur:toggle", { isBlurred: newBlurState, socketId, producerId: producerId });
-  }, [isVideoBlurred, socket, videoProducer]);
-
+  };
 
   useEffect(() => {
-    if (socket) {
-      socket.on("video:blurred", ({ isBlurred, fromSocketId }) => {
-        console.log("blurred");
+    socket.on("toggle-video-blur", ({ producerId, isBlurred }) => {
+      setConsumers((prevConsumers) =>
+        prevConsumers.map((consumer) =>
+          consumer.id === producerId
+            ? { ...consumer, isBlurred }
+            : consumer
+        )
+      );
+    });
 
-        setConsumers((prevConsumers) =>
-          prevConsumers.map((consumer) =>
-            consumer.id === fromSocketId
-              ? { ...consumer, isBlurred }
-              : consumer
-          )
-        );
-      });
-
-      return () => {
-        socket.off("video:blur:toggle");
-      };
-    }
+    return () => {
+      socket.off("toggle-video-blur");
+    };
   }, [socket]);
 
 
@@ -120,7 +85,7 @@ const VideoCall = () => {
       .then(() => {
         setCopySuccess("Link copied to clipboard!");
         setTimeout(() => setCopySuccess(""), 2000);
-        // console.log("Link copied to clipboard."); // Log link copy success
+        // console.log("Link copied to clipboard."); /
       })
       .catch(err => {
         console.error("Failed to copy: ", err);
@@ -164,19 +129,20 @@ const VideoCall = () => {
 
 
     if (roomCode) {
-      joinRoom(); // Call joinRoom when roomCode is available
+      joinRoom();
     }
   };
-
   const joinRoom = () => {
-    // console.log("Emitting joinRoom with roomCode:", roomCode); 
-    socket.emit(`joinRoom`, { roomCode }, (data) => {
-      // console.log("Router RTP Capabilities..", data.rtpCapabilities, data.socketId);
-      setSocketId(data.socketId)
+    socket.emit('joinRoom', { roomCode }, (data) => {
+      setSocketId(data.socketId);
       setRtpCapabilities(data.rtpCapabilities);
       createDevice(data.rtpCapabilities);
+
+
     });
   };
+
+
 
   const getLocalStream = () => {
     navigator.mediaDevices.getUserMedia({
@@ -199,7 +165,7 @@ const VideoCall = () => {
     try {
       const newDevice = new mediasoupClient.Device();
       await newDevice.load({ routerRtpCapabilities: RtpCapabilities });
-      setDevice(newDevice); // Device is now set
+      setDevice(newDevice);
       createSendTransport(newDevice);
     } catch (error) {
       console.log(error);
@@ -260,6 +226,7 @@ const VideoCall = () => {
             console.log(producersExist);
             setProducerId(id)
 
+
             if (producersExist) getProducers(newDevice)
           });
         } catch (error) {
@@ -277,34 +244,34 @@ const VideoCall = () => {
       const videoTrack = localVideoRef.current.stream.getVideoTracks()[0];
       const audioTrack = localVideoRef.current.stream.getAudioTracks()[0]
 
-      // console.log(audioTrack);
-
-      // const audioProducer = await newProducerTransport.produce({
-      //   track: audioTrack,
-      //   encodings: undefined, // No encodings for audio
-      //   codecOptions: undefined, // No codec options needed for audio unless specified
-      // });
-
       const videoProducer = await newProducerTransport.produce({
         track: videoTrack,
         encodings: param.encodings,
         codecOptions: param.codecOptions,
       });
 
-      // Producing the audio track
+      const audioProducer = await newProducerTransport.produce({
+        track: audioTrack,
+        encodings: undefined, 
+        codecOptions: undefined, 
+      });
+     
+      console.log(videoProducer);
+      console.log(audioProducer);
 
-      // console.log(videoProducer);
-      // console.log(audioProducer);
-
-      // setAudioProducer(audioProducer);
+      setAudioProducer(audioProducer);
       setVideoProducer(videoProducer)
-      // setAudioProducer(audioProducer)
-      // audioProducer.on("trackended", () => console.log("Audio track ended"));
+
+
+
 
       videoProducer.on("trackended", () => console.log("Video track ended"));
       videoProducer.on("transportclose", () => console.log("Video transport closed"));
 
-      // audioProducer.on("transportclose", () => console.log("Audio transport closed"));
+      audioProducer.on("trackended", () => console.log("Audio track ended"));
+      audioProducer.on("transportclose", () => console.log("Audio transport closed"));
+
+
     } catch (error) {
       console.error("Error producing track:", error);
     }
@@ -379,6 +346,8 @@ const VideoCall = () => {
           { id: remoteProducerId, kind: params.kind, stream: newStream },
         ];
       });
+
+
 
       socket.emit('consumer-resume', { serverConsumerId: params.serverConsumerId });
       setConsumer(newConsumer);

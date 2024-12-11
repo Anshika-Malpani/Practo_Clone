@@ -42,6 +42,34 @@ const VideoCall = () => {
 
   console.log(consumers);
 
+  const toggleVideoBlur = () => {
+    const updatedBlurState = !isVideoBlurred;
+    setIsVideoBlurred(updatedBlurState);
+  
+    // Notify other users about the blur state
+    if(producerId)
+    {
+      socket.emit("toggle-video-blur", { producerId, isBlurred: updatedBlurState });
+    }
+  };
+  
+  useEffect(() => {
+    socket.on("toggle-video-blur", ({ producerId, isBlurred }) => {
+      setConsumers((prevConsumers) =>
+        prevConsumers.map((consumer) =>
+          consumer.id === producerId
+            ? { ...consumer, isBlurred }
+            : consumer
+        )
+      );
+    });
+  
+    return () => {
+      socket.off("toggle-video-blur");
+    };
+  }, [socket]);
+  
+
 
   const toggleDarkMode = useCallback(() => {
     setIsDarkMode(prevMode => !prevMode);

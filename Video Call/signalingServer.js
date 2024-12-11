@@ -397,9 +397,10 @@ io.on("connection", (socket) => {
   })
 
 
-socket.on("video:blur:toggle", ({ to, isBlurred,producerId }) => {
-  io.to(to).emit("video:blurred", { producerId: producerId, isBlurred });
-});
+  socket.on("toggle-video-blur", ({ producerId, isBlurred }) => {
+    socket.broadcast.emit("toggle-video-blur", { producerId, isBlurred });
+  });
+  
 
 
   socket.on('consumer-resume', async ({ serverConsumerId }) => {
