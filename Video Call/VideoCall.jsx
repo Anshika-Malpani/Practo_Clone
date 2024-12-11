@@ -42,68 +42,6 @@ const VideoCall = () => {
 
   console.log(consumers);
 
-  const toggleVideoBlur = useCallback(async () => {
-    const newBlurState = !isVideoBlurred;
-    setIsVideoBlurred(newBlurState);
-
-    const localStream = localVideoRef.current.stream;
-    const videoTrack = localStream.getVideoTracks()[0];
-
-    if (newBlurState) {
-      // Create a blurred video track using canvas
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
-      canvas.width = localVideoRef.current.videoWidth || 640;
-      canvas.height = localVideoRef.current.videoHeight || 480;
-
-      const renderBlurredVideo = () => {
-        context.filter = "blur(10px)";
-        context.drawImage(localVideoRef.current, 0, 0, canvas.width, canvas.height);
-        requestAnimationFrame(renderBlurredVideo);
-      };
-
-      renderBlurredVideo();
-
-      const blurredStream = canvas.captureStream();
-      const blurredTrack = blurredStream.getVideoTracks()[0];
-
-      // Replace the current video track in the producer
-      if (videoProducer) {
-        await videoProducer.replaceTrack({ track: blurredTrack });
-      }
-    } else {
-      // Restore the original video track
-      if (videoProducer) {
-        await videoProducer.replaceTrack({ track: videoTrack });
-      }
-    }
-
-    // Notify others of the blur status
-    socket.emit("video:blur:toggle", { isBlurred: newBlurState, socketId, producerId: producerId });
-  }, [isVideoBlurred, socket, videoProducer]);
-
-
-  useEffect(() => {
-    if (socket) {
-      socket.on("video:blurred", ({ isBlurred, fromSocketId }) => {
-        console.log("blurred");
-
-        setConsumers((prevConsumers) =>
-          prevConsumers.map((consumer) =>
-            consumer.id === fromSocketId
-              ? { ...consumer, isBlurred }
-              : consumer
-          )
-        );
-      });
-
-      return () => {
-        socket.off("video:blur:toggle");
-      };
-    }
-  }, [socket]);
-
-
 
   const toggleDarkMode = useCallback(() => {
     setIsDarkMode(prevMode => !prevMode);
@@ -120,7 +58,7 @@ const VideoCall = () => {
       .then(() => {
         setCopySuccess("Link copied to clipboard!");
         setTimeout(() => setCopySuccess(""), 2000);
-        // console.log("Link copied to clipboard."); // Log link copy success
+        // console.log("Link copied to clipboard."); /
       })
       .catch(err => {
         console.error("Failed to copy: ", err);
@@ -199,7 +137,7 @@ const VideoCall = () => {
     try {
       const newDevice = new mediasoupClient.Device();
       await newDevice.load({ routerRtpCapabilities: RtpCapabilities });
-      setDevice(newDevice); // Device is now set
+      setDevice(newDevice);
       createSendTransport(newDevice);
     } catch (error) {
       console.log(error);
@@ -275,15 +213,7 @@ const VideoCall = () => {
     try {
 
       const videoTrack = localVideoRef.current.stream.getVideoTracks()[0];
-      const audioTrack = localVideoRef.current.stream.getAudioTracks()[0]
 
-      // console.log(audioTrack);
-
-      // const audioProducer = await newProducerTransport.produce({
-      //   track: audioTrack,
-      //   encodings: undefined, // No encodings for audio
-      //   codecOptions: undefined, // No codec options needed for audio unless specified
-      // });
 
       const videoProducer = await newProducerTransport.produce({
         track: videoTrack,
@@ -291,20 +221,11 @@ const VideoCall = () => {
         codecOptions: param.codecOptions,
       });
 
-      // Producing the audio track
-
-      // console.log(videoProducer);
-      // console.log(audioProducer);
-
-      // setAudioProducer(audioProducer);
-      setVideoProducer(videoProducer)
-      // setAudioProducer(audioProducer)
-      // audioProducer.on("trackended", () => console.log("Audio track ended"));
 
       videoProducer.on("trackended", () => console.log("Video track ended"));
       videoProducer.on("transportclose", () => console.log("Video transport closed"));
 
-      // audioProducer.on("transportclose", () => console.log("Audio transport closed"));
+
     } catch (error) {
       console.error("Error producing track:", error);
     }
@@ -485,7 +406,7 @@ const VideoCall = () => {
                 <input
                   type="checkbox"
                   checked={isVideoBlurred}
-                  onChange={toggleVideoBlur}
+
                   className="sr-only"
                 />
                 <div className="block h-[1.3rem] w-9 rounded-full border border-[#BFCEFF] bg-[#EAEEFB]"></div>

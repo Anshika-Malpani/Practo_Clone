@@ -1,6 +1,6 @@
 const { Server } = require("socket.io");
-const { v4: uuidv4 } = require("uuid");
 const mediasoup = require("mediasoup");
+const { v4: uuidv4 } = require("uuid");
 
 const io = new Server(8000, {
   cors: {
@@ -108,6 +108,7 @@ io.on("connection", (socket) => {
     return items
   }
 
+  
   socket.on("create-roomCode", async (callback) => {
     try {
       let roomCode;
@@ -124,7 +125,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on('disconnect', () => {
-
+    // do some cleanup
     console.log('peer disconnected');
 
     consumers = removeItems(consumers, socket.id, 'consumer');
@@ -135,7 +136,7 @@ io.on("connection", (socket) => {
       const { roomCode } = peers[socket.id];
       delete peers[socket.id];
 
-     
+      // remove socket from room
       if (rooms[roomCode]) {
         rooms[roomCode] = {
           router: rooms[roomCode].router,
@@ -150,6 +151,7 @@ io.on("connection", (socket) => {
   socket.on('joinRoom', async ({ roomCode }, callback) => {
     console.log("roomCode", roomCode);
 
+   
     const router1 = await createRoom(roomCode, socket.id)
 
     peers[socket.id] = {
@@ -164,7 +166,7 @@ io.on("connection", (socket) => {
       }
     }
 
-  
+
     const rtpCapabilities = router1.rtpCapabilities
     const socketId = socket.id
 
@@ -173,7 +175,6 @@ io.on("connection", (socket) => {
   })
 
   const createRoom = async (roomCode, socketId) => {
-    let router1
     let peers = []
     if (rooms[roomCode]) {
       router1 = rooms[roomCode].router
@@ -193,6 +194,11 @@ io.on("connection", (socket) => {
   }
 
 
+  const getRtpCapabilities = (callback) => {
+    const rtpCapabilities = router.rtpCapabilities;
+    callback({ rtpCapabilities });
+  };
+
   socket.on('createWebRtcTransport', async ({ consumer }, callback) => {
     const roomCode = peers[socket.id].roomCode
     const router = rooms[roomCode].router
@@ -208,7 +214,7 @@ io.on("connection", (socket) => {
           }
         })
 
-     
+       
         addTransport(transport, roomCode, consumer)
       },
       error => {
@@ -249,13 +255,13 @@ io.on("connection", (socket) => {
   }
 
   const addConsumer = (consumer, roomCode) => {
-
+   
     consumers = [
       ...consumers,
       { socketId: socket.id, consumer, roomCode, }
     ]
 
-  
+
     peers[socket.id] = {
       ...peers[socket.id],
       consumers: [
@@ -276,16 +282,16 @@ io.on("connection", (socket) => {
       }
     })
 
+   
     callback(producerList)
   })
 
   const informConsumers = (roomCode, socketId, id) => {
     console.log(`just joined, id ${id} ${roomCode}, ${socketId}`)
-   
+ 
     producers.forEach(producerData => {
       if (producerData.socketId !== socketId && producerData.roomCode === roomCode) {
         const producerSocket = peers[producerData.socketId].socket
-      
         producerSocket.emit('new-producer', { producerId: id })
       }
     })
@@ -339,7 +345,7 @@ io.on("connection", (socket) => {
         transportData.consumer && transportData.transport.id == serverConsumerTransportId
       )).transport
 
-     
+ 
       if (router.canConsume({
         producerId: remoteProducerId,
         rtpCapabilities
@@ -367,7 +373,7 @@ io.on("connection", (socket) => {
 
         addConsumer(consumer, roomCode)
 
-      
+        
         const params = {
           id: consumer.id,
           producerId: remoteProducerId,
@@ -377,7 +383,7 @@ io.on("connection", (socket) => {
           socketId:socket.id
         }
 
-       
+ 
         callback({ params })
       }
     } catch (error) {
