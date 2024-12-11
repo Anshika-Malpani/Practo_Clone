@@ -406,7 +406,6 @@ const VideoCall = () => {
                 <input
                   type="checkbox"
                   checked={isVideoBlurred}
-
                   className="sr-only"
                 />
                 <div className="block h-[1.3rem] w-9 rounded-full border border-[#BFCEFF] bg-[#EAEEFB]"></div>
