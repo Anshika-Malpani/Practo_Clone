@@ -11,11 +11,12 @@ const io = new Server(8000, {
 const rooms = {};
 
 let worker;
-let transports = []; 
+let transports = [];
 let producers = [];
 let consumers = [];
 let peers = {};
 const blurStates = {};
+let participants = [];
 
 
 const mediaCodecs = [
@@ -45,7 +46,7 @@ const createWorker = async () => {
 
   worker.on('died', error => {
     console.error('Mediasoup worker has died');
-    setTimeout(() => process.exit(1), 2000);s
+    setTimeout(() => process.exit(1), 2000); s
   });
 
   return worker;
@@ -60,7 +61,7 @@ const createWebRtcTransport = async (router) => {
       const webRtcTransport_options = {
         listenIps: [
           {
-            ip: '0.0.0.0', 
+            ip: '0.0.0.0',
             announcedIp: '192.168.1.36',
           }
         ],
@@ -70,12 +71,12 @@ const createWebRtcTransport = async (router) => {
       }
 
       let transport = await router.createWebRtcTransport(webRtcTransport_options);
-      console.log(`Transport created with ID: ${transport.id}`); 
+      console.log(`Transport created with ID: ${transport.id}`);
 
       transport.on('dtlsstatechange', dtlsState => {
         if (dtlsState === 'closed') {
           transport.close();
-          console.log(`Transport closed: ${transport.id}`); 
+          console.log(`Transport closed: ${transport.id}`);
         }
       });
 
@@ -85,7 +86,7 @@ const createWebRtcTransport = async (router) => {
 
       resolve(transport)
     } catch (error) {
-      console.error("Error creating transport:", error); 
+      console.error("Error creating transport:", error);
       reject(error);
     }
   })
@@ -113,10 +114,10 @@ io.on("connection", (socket) => {
     try {
       let roomCode;
       do {
-        roomCode = uuidv4().slice(0, 6); 
+        roomCode = uuidv4().slice(0, 6);
       } while (rooms[roomCode]);
 
-      console.log(`Room created with code: ${roomCode}`); 
+      console.log(`Room created with code: ${roomCode}`);
       callback(roomCode);
     } catch (error) {
       console.error("Error creating room:", error);
@@ -131,12 +132,14 @@ io.on("connection", (socket) => {
     consumers = removeItems(consumers, socket.id, 'consumer');
     producers = removeItems(producers, socket.id, 'producer');
     transports = removeItems(transports, socket.id, 'transport');
+    participants = participants.filter((participant) => participant.id !== socket.id);
+    io.emit("updateParticipants", { participants, hostId: participants[0]?.id || null });
 
     if (peers[socket.id]) {
       const { roomCode } = peers[socket.id];
       delete peers[socket.id];
 
-     
+
       if (rooms[roomCode]) {
         rooms[roomCode] = {
           router: rooms[roomCode].router,
@@ -148,28 +151,37 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on('joinRoom', async ({ roomCode }, callback) => {
+  socket.on('joinRoom', async ({ roomCode, userName }, callback) => {
     console.log("roomCode", roomCode);
 
     const router1 = await createRoom(roomCode, socket.id)
 
+    const isHost = participants.length === 0; // First user is the host
+    const user = { id: socket.id, name: userName, isHost };
+
+    participants.push(user);
+
+    // Broadcast updated participants list
+    io.emit("updateParticipants", { participants, hostId: user.isHost ? user.id : null });
+
+
     peers[socket.id] = {
       socket,
-      roomCode,           
+      roomCode,
       transports: [],
       producers: [],
       consumers: [],
       peerDetails: {
         name: '',
-        isAdmin: false,   
+        isAdmin: false,
       }
     }
 
-  
+
     const rtpCapabilities = router1.rtpCapabilities
     const socketId = socket.id
 
-    
+
     callback({ rtpCapabilities, socketId })
   })
 
@@ -209,7 +221,7 @@ io.on("connection", (socket) => {
           }
         })
 
-     
+
         addTransport(transport, roomCode, consumer)
       },
       error => {
@@ -256,7 +268,7 @@ io.on("connection", (socket) => {
       { socketId: socket.id, consumer, roomCode, }
     ]
 
-  
+
     peers[socket.id] = {
       ...peers[socket.id],
       consumers: [
@@ -267,7 +279,7 @@ io.on("connection", (socket) => {
   }
 
   socket.on('getProducers', callback => {
-  
+
     const { roomCode } = peers[socket.id]
 
     let producerList = []
@@ -282,11 +294,11 @@ io.on("connection", (socket) => {
 
   const informConsumers = (roomCode, socketId, id) => {
     console.log(`just joined, id ${id} ${roomCode}, ${socketId}`)
-   
+
     producers.forEach(producerData => {
       if (producerData.socketId !== socketId && producerData.roomCode === roomCode) {
         const producerSocket = peers[producerData.socketId].socket
-      
+
         producerSocket.emit('new-producer', { producerId: id })
       }
     })
@@ -318,7 +330,7 @@ io.on("connection", (socket) => {
       console.log('transport for this producer closed');
       producer.close();
     });
-    console.log(producers);
+    // console.log(producers);
 
     callback({ id: producer.id, producersExist: producers.length > 1 ? true : false });
   });
@@ -340,12 +352,12 @@ io.on("connection", (socket) => {
         transportData.consumer && transportData.transport.id == serverConsumerTransportId
       )).transport
 
-     
+
       if (router.canConsume({
         producerId: remoteProducerId,
         rtpCapabilities
       })) {
-      
+
         const consumer = await consumerTransport.consume({
           producerId: remoteProducerId,
           rtpCapabilities,
@@ -368,17 +380,17 @@ io.on("connection", (socket) => {
 
         addConsumer(consumer, roomCode)
 
-      
+
         const params = {
           id: consumer.id,
           producerId: remoteProducerId,
           kind: consumer.kind,
           rtpParameters: consumer.rtpParameters,
           serverConsumerId: consumer.id,
-          socketId:socket.id
+          socketId: socket.id
         }
 
-       
+
         callback({ params })
       }
     } catch (error) {
@@ -395,8 +407,9 @@ io.on("connection", (socket) => {
   socket.on("toggle-video-blur", ({ producerId, isBlurred }) => {
     blurStates[producerId] = isBlurred;
 
-    
-    
+    console.log(blurStates);
+
+
     socket.broadcast.emit("toggle-video-blur", { producerId, isBlurred });
   });
 
@@ -404,6 +417,15 @@ io.on("connection", (socket) => {
     // Return the current blur states of all users in the room
     console.log(blurStates);
     callback(blurStates);
+  });
+
+  socket.on('toggle-mute', ({ socketId, isMuted }) => {
+    socket.to(socketId).emit('mute-status', { isMuted });
+  });
+
+  // Handle camera on/off event
+  socket.on('toggle-camera', ({ socketId, isCameraOff }) => {
+    socket.to(socketId).emit('camera-status', { isCameraOff });
   });
 
 

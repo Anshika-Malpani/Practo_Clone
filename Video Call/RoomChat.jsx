@@ -4,7 +4,7 @@ import { useSocket } from '../context/SocketProvider';
 import { useUser } from '../context/UserContext';
 
 const RoomChat = ({ room, socketId }) => {
-  const socket = useSocket(); 
+  const socket = useSocket();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -21,10 +21,10 @@ const RoomChat = ({ room, socketId }) => {
 
   const handleSendMessage = () => {
     if (inputValue.trim()) {
-      const message = { text: inputValue, sender: socketId, room,userName };
+      const message = { text: inputValue, sender: socketId, room, userName };
       console.log("Sending message:", message);
 
-      socket.emit('sendRoomMessage', message); 
+      socket.emit('sendRoomMessage', message);
       setInputValue('');
     }
   };
@@ -89,7 +89,7 @@ const RoomChat = ({ room, socketId }) => {
       {isLoggedIn && (
         <div className='relative'>
           <div
-            className='w-[3.5vw] h-[3.5vw] rounded-full bg-gray-300 fixed bottom-4 right-8 flex items-center justify-center cursor-pointer'
+            className='w-[3.5vw] h-[3.5vw] flex items-center justify-center cursor-pointer'
             onClick={toggleChat}
           >
             {!isOpen ? (
@@ -99,7 +99,7 @@ const RoomChat = ({ room, socketId }) => {
             )}
           </div>
           {isOpen && (
-            <div className='fixed bottom-[15%] right-[3%] w-[25vw] h-[55vh] bg-white border border-gray-300 shadow-lg rounded-xl overflow-hidden'>
+            <div className=' w-[25vw] h-[55vh] bg-white border border-gray-300 shadow-lg rounded-xl overflow-hidden'>
               <div className='border-b-[1px] p-4'>
                 <h2 className='font-bold'>Chat Window</h2>
               </div>
@@ -112,24 +112,24 @@ const RoomChat = ({ room, socketId }) => {
                     <div
                       key={index}
                       className={`flex flex-col ${msg.sender === socketId
-                          ? 'justify-start items-end'
-                          : 'justify-end items-start'
+                        ? 'justify-start items-end'
+                        : 'justify-end items-start'
                         }`}
                     >
                       <div
                         className={`p-2 m-2 max-w-[45%] rounded-lg text-sm ${msg.sender === socketId
-                            ? 'bg-[#199FD9] text-white'
-                            : 'bg-gray-300 text-black'
+                          ? 'bg-[#199FD9] text-white'
+                          : 'bg-gray-300 text-black'
                           }`}
                       >
-                        {msg.userName && ( 
-                        <div className="text-[0.8rem] text-black font-medium">
-                          {msg.userName}
-                        </div>
-                      )}
+                        {msg.userName && (
+                          <div className="text-[0.8rem] text-black font-medium">
+                            {msg.userName}
+                          </div>
+                        )}
                         {msg.text}
                       </div>
-                      
+
                     </div>
                   ))}
                 </div>

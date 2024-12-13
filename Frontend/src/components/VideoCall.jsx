@@ -8,10 +8,12 @@ import { MdCallEnd } from "react-icons/md";
 import { RiFileCopyLine } from "react-icons/ri";
 import { IoCloseOutline } from "react-icons/io5";
 import RoomChat from "../components/RoomChat";
-import { IoChatboxEllipsesSharp, IoCloseSharp } from "react-icons/io5";
+import { useUser } from '../context/UserContext';
+import { IoPeopleSharp } from "react-icons/io5";
 
 const VideoCall = () => {
   const socket = useSocket();
+  const { userName } = useUser() || {};
   const { roomCode } = useParams();
   const localVideoRef = useRef(null);
   const [copySuccess, setCopySuccess] = useState("");
@@ -38,6 +40,12 @@ const VideoCall = () => {
   const [remoteVideoBlurred, setRemoteVideoBlurred] = useState(false);
   const [isVideoBlurred, setIsVideoBlurred] = useState(false);
   const [producerId, setProducerId] = useState();
+  const [isMuted, setIsMuted] = useState(false);
+  const [isCameraOff, setIsCameraOff] = useState(false);
+  const [participants, setParticipants] = useState([]); // New state for participants
+  const [hostId, setHostId] = useState(null);
+  const [participantsTab, setParticipantsTab] = useState(false);
+
 
 
   console.log(consumers);
@@ -50,6 +58,30 @@ const VideoCall = () => {
     if (producerId) {
       socket.emit("toggle-video-blur", { producerId, isBlurred: updatedBlurState });
     }
+  };
+
+  const toggleMute = () => {
+    const updatedMuteState = !isMuted;
+    setIsMuted(updatedMuteState);
+    if (localVideoRef.current) {
+      const audioTracks = localVideoRef.current.stream.getAudioTracks();
+      audioTracks.forEach(track => {
+        track.enabled = !updatedMuteState; // Toggle audio track
+      });
+    }
+    socket.emit('toggle-mute', { socketId, isMuted: updatedMuteState }); // Emit mute status
+  };
+
+  const toggleCamera = () => {
+    const updatedCameraState = !isCameraOff;
+    setIsCameraOff(updatedCameraState);
+    if (localVideoRef.current) {
+      const videoTracks = localVideoRef.current.stream.getVideoTracks();
+      videoTracks.forEach(track => {
+        track.enabled = !updatedCameraState; // Toggle video track
+      });
+    }
+    socket.emit('toggle-camera', { socketId, isCameraOff: updatedCameraState }); // Emit camera status
   };
 
   useEffect(() => {
@@ -72,6 +104,10 @@ const VideoCall = () => {
 
   const toggleDarkMode = useCallback(() => {
     setIsDarkMode(prevMode => !prevMode);
+  }, []);
+
+  const toggleParticipants = useCallback(() => {
+    setParticipantsTab(prevMode => !prevMode);
   }, []);
 
   const handleMoreOption = useCallback(() => {
@@ -132,8 +168,22 @@ const VideoCall = () => {
       joinRoom();
     }
   };
+
+  useEffect(() => {
+    socket.on("updateParticipants", ({ participants, hostId }) => {
+      console.log(participants, hostId);
+
+      setParticipants(participants);
+      setHostId(hostId); // Identify host
+    });
+
+    return () => {
+      socket.off("updateParticipants");
+    };
+  }, [socket]);
+
   const joinRoom = () => {
-    socket.emit('joinRoom', { roomCode }, (data) => {
+    socket.emit('joinRoom', { roomCode, userName }, (data) => {
       setSocketId(data.socketId);
       setRtpCapabilities(data.rtpCapabilities);
       createDevice(data.rtpCapabilities);
@@ -141,6 +191,8 @@ const VideoCall = () => {
 
     });
   };
+
+
 
 
 
@@ -224,7 +276,13 @@ const VideoCall = () => {
             callback({ id });
 
             console.log(producersExist);
-            setProducerId(id)
+            console.log(id);
+
+            setProducerId(() => {
+              if (parameters.kind == 'video') {
+                return id
+              }
+            })
 
 
             if (producersExist) getProducers(newDevice)
@@ -244,18 +302,20 @@ const VideoCall = () => {
       const videoTrack = localVideoRef.current.stream.getVideoTracks()[0];
       const audioTrack = localVideoRef.current.stream.getAudioTracks()[0]
 
+
+
+      const audioProducer = await newProducerTransport.produce({
+        track: audioTrack,
+        encodings: undefined,
+        codecOptions: undefined,
+      });
+
       const videoProducer = await newProducerTransport.produce({
         track: videoTrack,
         encodings: param.encodings,
         codecOptions: param.codecOptions,
       });
 
-      const audioProducer = await newProducerTransport.produce({
-        track: audioTrack,
-        encodings: undefined, 
-        codecOptions: undefined, 
-      });
-     
       console.log(videoProducer);
       console.log(audioProducer);
 
@@ -332,6 +392,9 @@ const VideoCall = () => {
         },
       ]);
 
+      console.log(newConsumer);
+
+
       const { track } = newConsumer;
       const newStream = new MediaStream([track]);
 
@@ -346,6 +409,8 @@ const VideoCall = () => {
           { id: remoteProducerId, kind: params.kind, stream: newStream },
         ];
       });
+
+
 
 
 
@@ -405,7 +470,7 @@ const VideoCall = () => {
                     style={{ filter: consumer.isBlurred ? 'blur(10px)' : 'none' }}
                     key={consumer.id}
                     autoPlay
-                    className={`video ${isDarkMode ? 'border-2 border-white' : 'border-2 border-black'}
+                    className={`video bg-[url('/images/userAvatar.png')] bg-[#2e474e] bg-center bg-contain bg-no-repeat ${isDarkMode ? 'border-2 border-white' : 'border-2 border-black'}
                       `}
                     ref={(videoRef) => {
                       if (videoRef) {
@@ -468,26 +533,57 @@ const VideoCall = () => {
           </div>
         </div>
 
+        <div className={`absolute w-[20vw] h-[95%] bg- rounded-md right-[6%] bottom-0 shadow-xl transition-all duration-300 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'} ${participantsTab ? 'block' : 'hidden'
+          }`}
+        >
+          <div className="participants-list p-4 space-y-4">
+            <div className="flex items-center justify-between border-b"><h2 className="text-xl font-semibold  pb-2">Participants</h2> <h5 className="text-xl font-semibold  pb-2">{participants.length}</h5></div>
+            <ol className="list-decimal space-y-3 ">
+              {participants.map((participant) => (
+                <li
+                  key={participant.id}
+                  className="flex items-center justify-between px-2 py-1 bg-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:text-white"
+                >
+                  <span className="truncate">{participant.name}</span>
+                  {participant.isHost && (
+                    <span className="ml-2 text-xs font-medium  bg-blue-100 rounded-full px-2 py-0.5 dark:bg-blue-700">
+                      Host
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+
+
       </div>
 
-      <footer className={`flex items-center justify-center ${isDarkMode ? 'bg-[#202124]' : 'bg-gray-100'}  shadow-md h-[10%]`}>
-        <button className="mx-2 p-4 bg-gray-300 rounded-full hover:bg-gray-400 transition">
-          <FaMicrophone className="text-lg" />
-        </button>
-        <button className="mx-2 p-4 bg-gray-300 rounded-full hover:bg-gray-400 transition">
-          <BsFillCameraVideoFill className="text-lg" />
-        </button>
-        <button onClick={handleMoreOption} className="mx-2 p-4 bg-gray-300 rounded-full hover:bg-gray-400 transition">
-          <BsThreeDots className="text-xl" />
-        </button>
-        <button
-          className="mx-2 p-4 bg-red-500 text-white rounded-full hover:bg-red-600"
-          onClick={() => (window.location.href = "/")}
-        >
-          <MdCallEnd className="text-lg text-white" />
-        </button>
-
-        <RoomChat room={roomCode} socketId={socketId} />
+      <footer className={`flex items-center justify-between px-4 ${isDarkMode ? 'bg-[#202124]' : 'bg-gray-100'}  shadow-md h-[10%]`}>
+        <div className="flex items-center justify-center">
+          <div><h1 className="px-2 font-medium">5:90 PM</h1></div><span className="font-medium"> | </span>
+          <div><h1 className="px-2 font-medium">{roomCode}</h1></div>
+        </div>
+        <div className="flex items-center justify-center gap-3">
+          <div onClick={toggleMute} className="w-[3.5vw] h-[3.5vw] flex items-center justify-center bg-gray-300 rounded-full cursor-pointer hover:bg-gray-400 ">
+            {isMuted ? <FaMicrophoneSlash className="text-lg" /> : <FaMicrophone className="text-lg" />}
+          </div>
+          <div onClick={toggleCamera} className="  w-[3.5vw] h-[3.5vw] flex items-center justify-center bg-gray-300 rounded-full hover:bg-gray-400 transition">
+            {isCameraOff ? <BsFillCameraVideoOffFill className="text-lg" /> : <BsFillCameraVideoFill className="text-lg" />}
+          </div>
+          <div onClick={handleMoreOption} className=" w-[3.5vw] h-[3.5vw] flex items-center justify-center  bg-gray-300 rounded-full hover:bg-gray-400 transition">
+            <BsThreeDots className="text-xl" />
+          </div>
+          <div
+            className="p-4 bg-red-500 text-white rounded-full hover:bg-red-600"
+            onClick={() => (window.location.href = "/")}
+          >
+            <MdCallEnd className="text-lg text-white" />
+          </div></div>
+        <div className="flex items-center justify-center ">
+          <div className=" w-[3.5vw] h-[3.5vw] flex items-center justify-center cursor-pointer relative" onClick={toggleParticipants}><IoPeopleSharp className="text-2xl" /> <div className="absolute bg-black top-0 text-white rounded-full w-[1.2vw] h-[1.2vw] text-xs right-1 flex items-center justify-center font-medium">{participants.length}</div></div>
+          <RoomChat room={roomCode} socketId={socketId} />
+        </div>
       </footer>
     </div>
 

@@ -89,17 +89,17 @@ const RoomChat = ({ room, socketId }) => {
       {isLoggedIn && (
         <div className='relative'>
           <div
-            className='w-[3.5vw] h-[3.5vw] rounded-full bg-gray-300 fixed bottom-4 right-8 flex items-center justify-center cursor-pointer'
+            className='w-[3.5vw] h-[3.5vw]  flex items-center justify-center cursor-pointer'
             onClick={toggleChat}
           >
             {!isOpen ? (
-              <IoChatboxEllipsesSharp className='text-xl text-black' />
+              <IoChatboxEllipsesSharp className='text-2xl text-black' />
             ) : (
-              <IoCloseSharp className='text-xl text-black' />
+              <IoCloseSharp className='text-2xl text-black' />
             )}
           </div>
           {isOpen && (
-            <div className='fixed bottom-[15%] right-[3%] w-[25vw] h-[55vh] bg-white border border-gray-300 shadow-lg rounded-xl overflow-hidden'>
+            <div className='fixed bottom-[10%] right-[2%] w-[25vw] h-[55vh] bg-white border border-gray-300 shadow-lg rounded-xl overflow-hidden'>
               <div className='border-b-[1px] p-4'>
                 <h2 className='font-bold'>Chat Window</h2>
               </div>
