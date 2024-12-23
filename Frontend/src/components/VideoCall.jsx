@@ -10,6 +10,9 @@ import { IoCloseOutline } from "react-icons/io5";
 import RoomChat from "../components/RoomChat";
 import { useUser } from '../context/UserContext';
 import { IoPeopleSharp } from "react-icons/io5";
+import { BiDotsVerticalRounded } from "react-icons/bi";
+import { IoMdRemoveCircleOutline } from "react-icons/io";
+import { RiAdminLine } from "react-icons/ri";
 
 const VideoCall = () => {
   const socket = useSocket();
@@ -42,15 +45,20 @@ const VideoCall = () => {
   const [producerId, setProducerId] = useState();
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
-  const [participants, setParticipants] = useState([]); 
+  const [participants, setParticipants] = useState([]);
   const [hostId, setHostId] = useState();
   const [participantsTab, setParticipantsTab] = useState(false);
   const [notification, setNotification] = useState("");
+  const [moreActions, setMoreActions] = useState(false);
+  const [isAdmin, setIsAdmin] = useState();
 
 
 
   console.log("socketId", socketId);
-  console.log("hostId", hostId);
+  console.log("socket", socket);
+  // console.log("hostId", hostId);
+  console.log("participants", participants);
+  console.log("isAdmin", isAdmin);
 
   const toggleVideoBlur = () => {
     const updatedBlurState = !isVideoBlurred;
@@ -72,6 +80,7 @@ const VideoCall = () => {
     if (confirmKick) {
       socket.emit("kick-participant", { participantId });
     }
+    setMoreActions(prev => !prev);
   };
 
   useEffect(() => {
@@ -80,12 +89,12 @@ const VideoCall = () => {
       alert("You have been removed from the meeting.");
       window.location.href = "/";
     });
-  
+
     return () => {
       socket.off("kicked");
     };
   }, [socket]);
-  
+
 
   const toggleMute = () => {
     const updatedMuteState = !isMuted;
@@ -93,10 +102,10 @@ const VideoCall = () => {
     if (localVideoRef.current) {
       const audioTracks = localVideoRef.current.stream.getAudioTracks();
       audioTracks.forEach(track => {
-        track.enabled = !updatedMuteState; 
+        track.enabled = !updatedMuteState;
       });
     }
-    socket.emit('toggle-mute', { socketId, isMuted: updatedMuteState }); 
+    socket.emit('toggle-mute', { socketId, isMuted: updatedMuteState });
   };
 
   const toggleCamera = () => {
@@ -105,10 +114,10 @@ const VideoCall = () => {
     if (localVideoRef.current) {
       const videoTracks = localVideoRef.current.stream.getVideoTracks();
       videoTracks.forEach(track => {
-        track.enabled = !updatedCameraState; 
+        track.enabled = !updatedCameraState;
       });
     }
-    socket.emit('toggle-camera', { socketId, isCameraOff: updatedCameraState }); 
+    socket.emit('toggle-camera', { socketId, isCameraOff: updatedCameraState });
   };
 
   useEffect(() => {
@@ -141,6 +150,11 @@ const VideoCall = () => {
     // console.log(moreOption);
 
     setMoreOption(prev => !prev);
+  }, []);
+  const handleMoreActions = useCallback(() => {
+    // console.log(moreOption);
+
+    setMoreActions(prev => !prev);
   }, []);
 
   const handleCopyLink = () => {
@@ -199,10 +213,17 @@ const VideoCall = () => {
   useEffect(() => {
     socket.on("updateParticipants", ({ participants, hostId }) => {
       console.log(participants, hostId);
+      console.log("participants updated");
+
 
       setParticipants(participants);
 
       setHostId(participants[0].id)
+      participants.forEach(participant => {
+        if (participant.id === socket.id) {
+          setIsAdmin(participant.isAdmin);
+        }
+      })
 
 
 
@@ -497,6 +518,32 @@ const VideoCall = () => {
     removeConsumer(remoteProducerId);
   });
 
+  const handleMakeAdmin = (participantId) => {
+
+    socket.emit("make-admin", { participantId });
+    setMoreActions(prev => !prev);
+  };
+
+  const handleMuteParticipant = (participantId) => {
+    socket.emit("mute-participant", { participantId });
+    setMoreActions(prev => !prev);
+  };
+
+  useEffect(() => {
+    socket.on("muted-by-host", () => {
+
+      if (localVideoRef.current) {
+        const audioTracks = localVideoRef.current.srcObject.getAudioTracks();
+        audioTracks.forEach(track => track.enabled = false);
+      }
+    });
+
+    return () => {
+      socket.off("muted-by-host");
+    };
+  }, [socket]);
+
+
 
   return (
     <div id="video" className={` rounded-lg h-screen`}>
@@ -520,7 +567,7 @@ const VideoCall = () => {
         <div className={`w-full ${isDarkMode ? 'bg-[#202124]' : 'bg-gray-100'}  h-[90vh] `}>
           <div className="p-5">
             <div className="video-grid">
-              <video style={{ filter: isVideoBlurred ? 'blur(10px)' : 'none' }} ref={localVideoRef} id="localVideo" autoPlay className={`video ${isDarkMode ? 'border-2 border-white ' : 'border-2 border-black'} `}></video>
+              <video style={{ filter: isVideoBlurred ? 'blur(10px)' : 'none' }} ref={localVideoRef} id="localVideo" autoPlay muted className={`video ${isDarkMode ? 'border-2 border-white ' : 'border-2 border-black'} `}></video>
               {consumers.map((consumer) => (
                 consumer.kind === "video" ? (
                   <video id={consumer.id}
@@ -606,22 +653,49 @@ const VideoCall = () => {
               {participants.map((participant) => (
                 <li
                   key={participant.id}
-                  className="flex items-center justify-between px-2 py-1 bg-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:text-white"
+                  className=" relative flex items-center justify-between px-2 h-[8.5vh] bg-gray-100 rounded-lg shadow-sm dark:bg-gray-700 dark:text-white"
                 >
-                  <span className="truncate">{participant.name}</span>
-                  {participant.isHost && (
-                    <span className="ml-2 text-xs font-medium  bg-blue-100 rounded-full px-2 py-0.5 dark:bg-blue-700">
-                      Host
-                    </span>
-                  )}
-                  {socketId == hostId && !participant.isHost && ( // Show kick button only for host
-                    <button
-                      className="ml-2 text-red-500"
-                      onClick={() => handleKick(participant.id)}
-                    >
-                      Remove
-                    </button>
-                  )}
+                  <div>
+                    <h1 className="truncate">{participant.name}</h1>
+                    {participant.isHost && (
+                      <h1 className="text-xs font-medium   py-0.5 ">
+                        Meeting Host
+                      </h1>
+                    )}
+                    {participant.isAdmin && !participant.isHost && (
+                      <span className="text-xs font-medium bg-green-100 rounded-full px-2 py-0.5 dark:bg-green-700">
+                        Meeting Admin
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    {(socketId === hostId || isAdmin == true) && !participant.isHost && !participant.isAdmin && 
+                      (
+                        <BiDotsVerticalRounded className="cursor-pointer" onClick={handleMoreActions} />
+                      )}
+                  </div>
+                  <div className={`absolute  w-[15vw] -bottom-24 right-0 z-20 rounded-md flex flex-col items-center justify-center gap-2 shadow-xl bg-white overflow-hidden ${moreActions ? "block":"hidden"}`}>
+                    {(socketId === hostId || isAdmin == true) && !participant.isHost && !participant.isAdmin && (
+                      <>
+                        <button className="flex items-center  gap-4 text-black  w-full py-1 transition-all duration-150 ease-in-out hover:bg-gray-300" onClick={() => handleMakeAdmin(participant.id)}>
+                          <RiAdminLine className="text-xl font-bold w-[18%]" />
+                          <p className="text-gray-600">Make Admin</p>
+                        </button>
+                        <button className="flex items-center  gap-4 text-black  w-full py-1 transition-all duration-150 ease-in-out hover:bg-gray-300" onClick={() => handleMuteParticipant(participant.id)}>
+                          <FaMicrophoneSlash className="text-lg font-bold w-[18%] " />
+                          <p className="text-gray-600">Mute</p>
+                        </button>
+                        <button
+                          className="flex items-center  gap-4 text-black w-full py-1 transition-all duration-150 ease-in-out hover:bg-gray-300"
+                          onClick={() => handleKick(participant.id)}
+                        >
+                          <IoMdRemoveCircleOutline className="text-xl font-bold w-[18%]" />
+                          <p className="text-gray-600">Remove from the call</p>
+                        </button>
+                      </>
+                    )}
+            
+                  </div>
                 </li>
               ))}
             </ol>

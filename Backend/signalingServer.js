@@ -62,7 +62,7 @@ const createWebRtcTransport = async (router) => {
         listenIps: [
           {
             ip: '0.0.0.0',
-            announcedIp: '192.168.1.34',
+            announcedIp: '192.168.1.33',
           }
         ],
         enableUdp: true,
@@ -126,17 +126,17 @@ io.on("connection", (socket) => {
   });
 
   socket.on("kick-participant", ({ participantId }) => {
-    // Find the participant to kick
+
     const participant = participants.find((p) => p.id === participantId);
 
     if (participant) {
-      // Remove the participant's data
+
       participants = participants.filter(p => p.id !== participantId);
 
-      // Notify the kicked participant to redirect
+
       io.to(participantId).emit("kicked");
 
-      // Notify remaining participants about the updated list
+
       io.to(participant.roomCode).emit("updateParticipants", {
         participants,
         hostId: participants[0]?.id || null,
@@ -145,12 +145,30 @@ io.on("connection", (socket) => {
   });
 
 
+  socket.on("make-admin", ({ participantId }) => {
+
+    const participant = participants.find((p) => p.id === participantId);
+
+    if (participant) {
+      participant.isAdmin = true;
+      io.emit("updateParticipants", { participants });
+    }
+    console.log(participants);
+
+  });
+
+
+  socket.on("mute-participant", ({ participantId }) => {
+    io.to(participantId).emit("muted-by-host");
+  });
+
+
   socket.on('disconnect', () => {
 
     console.log('peer disconnected');
-    const userName = participants.find(participant => participant.id === socket.id)?.name; // Get the user's name
+    const userName = participants.find(participant => participant.id === socket.id)?.name; 
     if (userName) {
-      socket.broadcast.emit("user-left", { userName }); // Emit the user-left message
+      socket.broadcast.emit("user-left", { userName }); 
     }
 
     consumers = removeItems(consumers, socket.id, 'consumer');
@@ -180,12 +198,12 @@ io.on("connection", (socket) => {
 
     const router1 = await createRoom(roomCode, socket.id)
 
-    const isHost = participants.length === 0; // First user is the host
-    const user = { id: socket.id, name: userName, isHost };
+    const isHost = participants.length === 0; 
+    const user = { id: socket.id, name: userName, isHost, isAdmin: false };
 
     participants.push(user);
 
-    // Broadcast updated participants list
+    
     io.emit("updateParticipants", { participants, hostId: user.isHost ? user.id : null });
     socket.broadcast.emit("user-joined", { userName });
 
