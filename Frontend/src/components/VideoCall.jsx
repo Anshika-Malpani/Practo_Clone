@@ -34,7 +34,7 @@ const VideoCall = () => {
   const [consumers, setConsumers] = useState([]);
   const [audioProducer, setAudioProducer] = useState();
   const [videoProducer, setVideoProducer] = useState();
-  const [socketId, setSocketId] = useState(null);
+  const [socketId, setSocketId] = useState();
   const [moreOption, setMoreOption] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [remoteVideoBlurred, setRemoteVideoBlurred] = useState(false);
@@ -42,13 +42,15 @@ const VideoCall = () => {
   const [producerId, setProducerId] = useState();
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
-  const [participants, setParticipants] = useState([]); // New state for participants
-  const [hostId, setHostId] = useState(null);
+  const [participants, setParticipants] = useState([]); 
+  const [hostId, setHostId] = useState();
   const [participantsTab, setParticipantsTab] = useState(false);
+  const [notification, setNotification] = useState("");
 
 
 
-  console.log(consumers);
+  console.log("socketId", socketId);
+  console.log("hostId", hostId);
 
   const toggleVideoBlur = () => {
     const updatedBlurState = !isVideoBlurred;
@@ -60,16 +62,41 @@ const VideoCall = () => {
     }
   };
 
+  const showNotification = (message) => {
+    setNotification(message);
+    setTimeout(() => setNotification(""), 5000); // Clear after 3 seconds
+  };
+
+  const handleKick = (participantId) => {
+    const confirmKick = window.confirm("Are you sure you want to kick this participant?");
+    if (confirmKick) {
+      socket.emit("kick-participant", { participantId });
+    }
+  };
+
+  useEffect(() => {
+    socket.on("kicked", () => {
+      // Redirect the user to the home page
+      alert("You have been removed from the meeting.");
+      window.location.href = "/";
+    });
+  
+    return () => {
+      socket.off("kicked");
+    };
+  }, [socket]);
+  
+
   const toggleMute = () => {
     const updatedMuteState = !isMuted;
     setIsMuted(updatedMuteState);
     if (localVideoRef.current) {
       const audioTracks = localVideoRef.current.stream.getAudioTracks();
       audioTracks.forEach(track => {
-        track.enabled = !updatedMuteState; // Toggle audio track
+        track.enabled = !updatedMuteState; 
       });
     }
-    socket.emit('toggle-mute', { socketId, isMuted: updatedMuteState }); // Emit mute status
+    socket.emit('toggle-mute', { socketId, isMuted: updatedMuteState }); 
   };
 
   const toggleCamera = () => {
@@ -78,10 +105,10 @@ const VideoCall = () => {
     if (localVideoRef.current) {
       const videoTracks = localVideoRef.current.stream.getVideoTracks();
       videoTracks.forEach(track => {
-        track.enabled = !updatedCameraState; // Toggle video track
+        track.enabled = !updatedCameraState; 
       });
     }
-    socket.emit('toggle-camera', { socketId, isCameraOff: updatedCameraState }); // Emit camera status
+    socket.emit('toggle-camera', { socketId, isCameraOff: updatedCameraState }); 
   };
 
   useEffect(() => {
@@ -136,7 +163,7 @@ const VideoCall = () => {
     }
 
     const handleConnectionSuccess = ({ socketId }) => {
-      setSocketId(socketId)
+      // setSocketId(socketId)
       // console.log("Socket connected. Socket ID:", socketId);
       // getLocalStream();
     };
@@ -174,16 +201,46 @@ const VideoCall = () => {
       console.log(participants, hostId);
 
       setParticipants(participants);
-      setHostId(hostId); // Identify host
+
+      setHostId(participants[0].id)
+
+
+
+
+
     });
+
 
     return () => {
       socket.off("updateParticipants");
     };
   }, [socket]);
 
+  useEffect(() => {
+    socket.on("user-joined", ({ userName }) => {
+      showNotification(`${userName} has joined the meeting`);
+    });
+
+
+    return () => {
+      socket.off("user-joined");
+    };
+  }, [socket]);
+  useEffect(() => {
+    socket.on("user-left", ({ userName }) => {
+      showNotification(`${userName} has left the meeting`);
+    });
+
+
+    return () => {
+      socket.off("user-left");
+    };
+  }, [socket]);
+
   const joinRoom = () => {
     socket.emit('joinRoom', { roomCode, userName }, (data) => {
+      console.log(data.socketId);
+
       setSocketId(data.socketId);
       setRtpCapabilities(data.rtpCapabilities);
       createDevice(data.rtpCapabilities);
@@ -470,7 +527,7 @@ const VideoCall = () => {
                     style={{ filter: consumer.isBlurred ? 'blur(10px)' : 'none' }}
                     key={consumer.id}
                     autoPlay
-                    className={`video bg-[url('/images/userAvatar.png')] bg-[#2e474e] bg-center bg-contain bg-no-repeat ${isDarkMode ? 'border-2 border-white' : 'border-2 border-black'}
+                    className={`video  ${isDarkMode ? 'border-2 border-white' : 'border-2 border-black'}
                       `}
                     ref={(videoRef) => {
                       if (videoRef) {
@@ -533,6 +590,13 @@ const VideoCall = () => {
           </div>
         </div>
 
+        {notification && (
+          <div className={`absolute bottom-4 right-4 ${!isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'} font-semibold py-2 px-4 rounded-lg shadow-md transition duration-150 ease-in-out`}>
+            {notification}
+          </div>
+        )}
+
+
         <div className={`absolute w-[20vw] h-[95%] bg- rounded-md right-[6%] bottom-0 shadow-xl transition-all duration-300 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'} ${participantsTab ? 'block' : 'hidden'
           }`}
         >
@@ -549,6 +613,14 @@ const VideoCall = () => {
                     <span className="ml-2 text-xs font-medium  bg-blue-100 rounded-full px-2 py-0.5 dark:bg-blue-700">
                       Host
                     </span>
+                  )}
+                  {socketId == hostId && !participant.isHost && ( // Show kick button only for host
+                    <button
+                      className="ml-2 text-red-500"
+                      onClick={() => handleKick(participant.id)}
+                    >
+                      Remove
+                    </button>
                   )}
                 </li>
               ))}

@@ -62,7 +62,7 @@ const createWebRtcTransport = async (router) => {
         listenIps: [
           {
             ip: '0.0.0.0',
-            announcedIp: '192.168.1.36',
+            announcedIp: '192.168.1.34',
           }
         ],
         enableUdp: true,
@@ -125,9 +125,33 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("kick-participant", ({ participantId }) => {
+    // Find the participant to kick
+    const participant = participants.find((p) => p.id === participantId);
+
+    if (participant) {
+      // Remove the participant's data
+      participants = participants.filter(p => p.id !== participantId);
+
+      // Notify the kicked participant to redirect
+      io.to(participantId).emit("kicked");
+
+      // Notify remaining participants about the updated list
+      io.to(participant.roomCode).emit("updateParticipants", {
+        participants,
+        hostId: participants[0]?.id || null,
+      });
+    }
+  });
+
+
   socket.on('disconnect', () => {
 
     console.log('peer disconnected');
+    const userName = participants.find(participant => participant.id === socket.id)?.name; // Get the user's name
+    if (userName) {
+      socket.broadcast.emit("user-left", { userName }); // Emit the user-left message
+    }
 
     consumers = removeItems(consumers, socket.id, 'consumer');
     producers = removeItems(producers, socket.id, 'producer');
@@ -163,6 +187,7 @@ io.on("connection", (socket) => {
 
     // Broadcast updated participants list
     io.emit("updateParticipants", { participants, hostId: user.isHost ? user.id : null });
+    socket.broadcast.emit("user-joined", { userName });
 
 
     peers[socket.id] = {
